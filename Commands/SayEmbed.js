@@ -111,6 +111,30 @@ module.exports = {
                     content: messageContent || undefined,
                     embeds: [embed]
                 });
+
+                const logChannel = await interaction.client.channels.fetch(process.env.LOG_CHANNEL_ID);
+                if (logChannel) {
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle(title)
+                        .setDescription(`${message}\n\nSent by: ${interaction.user}/n${interaction.user.username}\nIn: ${targetChannel}\nTime: <t:${Math.floor(Date.now() / 1000)}:R>`)
+                        .setColor(color);
+
+                    if (imageUrl) {
+                        logEmbed.setImage(imageUrl);
+                    } else if (imageAttachment) {
+                        logEmbed.setImage(imageAttachment.url);
+                    }
+
+                    if (forceTag) {
+                        await logChannel.send({
+                            content: `Force Tag: ${forceTag}`,
+                            embeds: [logEmbed]
+                        });
+                    } else {
+                        await logChannel.send({ embeds: [logEmbed] });
+                    }
+                }
+
                 await modalSubmission.reply({ content: 'Embed sent successfully!', ephemeral: true });
             } catch (error) {
                 await modalSubmission.reply({ content: 'Failed to send embed.', ephemeral: true });
