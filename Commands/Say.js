@@ -23,7 +23,7 @@ module.exports = {
             try {
                 targetChannel = await interaction.client.channels.fetch(channelId);
                 if (!targetChannel || !targetChannel.isTextBased()) {
-                    return await interaction.reply({ content: 'Invalid channel ID or channel is not text-based.', ephemeral: true });
+                    return await interaction.reply({ content: 'Invalid channel ID.', ephemeral: true });
                 }
             } catch (error) {
                 return await interaction.reply({ content: 'Could not find that channel.', ephemeral: true });
@@ -34,7 +34,7 @@ module.exports = {
             await targetChannel.send(message);
             await interaction.reply({ content: 'Message sent successfully!', ephemeral: true });
         } catch (error) {
-            await interaction.reply({ content: 'Failed to send message. Check bot permissions.', ephemeral: true });
+            await interaction.reply({ content: 'Failed to send message.', ephemeral: true });
         }
     },
 };

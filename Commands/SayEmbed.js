@@ -83,7 +83,7 @@ module.exports = {
                 try {
                     targetChannel = await interaction.client.channels.fetch(channelId);
                     if (!targetChannel || !targetChannel.isTextBased()) {
-                        return await modalSubmission.reply({ content: 'Invalid channel ID or channel is not text-based.', ephemeral: true });
+                        return await modalSubmission.reply({ content: 'Invalid channel ID.', ephemeral: true });
                     }
                 } catch (error) {
                     return await modalSubmission.reply({ content: 'Could not find that channel.', ephemeral: true });
@@ -113,11 +113,11 @@ module.exports = {
                 });
                 await modalSubmission.reply({ content: 'Embed sent successfully!', ephemeral: true });
             } catch (error) {
-                await modalSubmission.reply({ content: 'Failed to send embed. Check bot permissions.', ephemeral: true });
+                await modalSubmission.reply({ content: 'Failed to send embed.', ephemeral: true });
             }
 
         } catch (error) {
-            console.error('Modal timeout or error:', error);
+            console.error('Modal error:', error);
         }
     },
 };
