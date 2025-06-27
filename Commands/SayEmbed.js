@@ -112,11 +112,11 @@ module.exports = {
                     embeds: [embed]
                 });
 
-                const logChannel = await interaction.client.channels.fetch(process.env.LOG_CHANNEL_ID);
+                const logChannel = await interaction.client.channels.fetch(process.env.SAYS_LOG_CHANNEL_ID);
                 if (logChannel) {
                     const logEmbed = new EmbedBuilder()
                         .setTitle(title)
-                        .setDescription(`${message}\n\nSent by: ${interaction.user}/n${interaction.user.username}\nIn: ${targetChannel}\nTime: <t:${Math.floor(Date.now() / 1000)}:R>`)
+                        .setDescription(`${message}\n\nSent by: ${interaction.user} (${interaction.user.username})\nIn: ${targetChannel}\nTime: <t:${Math.floor(Date.now() / 1000)}:R>`)
                         .setColor(color);
 
                     if (imageUrl) {

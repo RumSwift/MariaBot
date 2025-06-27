@@ -33,12 +33,12 @@ module.exports = {
         try {
             await targetChannel.send(message);
 
-            const logChannel = await interaction.client.channels.fetch(process.env.LOG_CHANNEL_ID);
+            const logChannel = await interaction.client.channels.fetch(process.env.SAYS_LOG_CHANNEL_ID);
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
                     .setColor('#00ff00')
                     .setTitle('Plain text')
-                    .setDescription(`${message}\n\nSent by: ${interaction.user}/n${interaction.user.username}\nIn: ${targetChannel}\nTime: <t:${Math.floor(Date.now() / 1000)}:R>`);
+                    .setDescription(`${message}\n\nSent by: ${interaction.user} (${interaction.user.username})\nIn: ${targetChannel}\nTime: <t:${Math.floor(Date.now() / 1000)}:R>`);
 
                 await logChannel.send({ embeds: [logEmbed] });
             }
