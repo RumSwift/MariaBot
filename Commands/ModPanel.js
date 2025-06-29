@@ -23,6 +23,7 @@ module.exports = {
         }
 
         let sanctionHistory = '';
+        let historyNumbers = '';
         try {
             const apiResponse = await fetch(`http://localhost:3000/api/sanctions/GetSanctionsByDiscordID/${targetUser.id}`, {
                 headers: {
@@ -34,47 +35,69 @@ module.exports = {
                 const sanctionData = await apiResponse.json();
                 if (sanctionData.success && sanctionData.count > 0) {
                     const sanctions = sanctionData.data.slice(0, 10);
+
+                    // Count each sanction type
+                    const allSanctions = sanctionData.data; // Use all sanctions for counting, not just top 10
+                    const warningCount = allSanctions.filter(s => s.SanctionType === 'Verbal Warning').length;
+                    const sanctionCount = allSanctions.filter(s => s.SanctionType === 'Guidelines Strike').length;
+                    const profileCount = allSanctions.filter(s => s.SanctionType === 'InappropriateProfile').length;
+                    const racismCount = allSanctions.filter(s => s.SanctionType === 'Racism').length;
+
                     const sanctionList = sanctions.map((sanction, index) => {
-                        const date = new Date(sanction.Timestamp);
-                        const formattedDate = date.toLocaleDateString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                        }) + ' ' + date.toLocaleTimeString('en-GB', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
-                        });
+                        // The timestamp is already in UTC format with Z suffix
+                        const utcDate = new Date(sanction.Timestamp);
+                        const timestamp = Math.floor(utcDate.getTime() / 1000);
 
                         let emoji = '';
+                        let displayText = sanction.SanctionType;
+
                         if (sanction.SanctionType === 'Emergency Mute') {
                             emoji = '🔕';
                         } else if (sanction.SanctionType === 'Verbal Warning') {
                             emoji = '⚠️';
                         } else if (sanction.SanctionType === 'Guidelines Strike') {
                             emoji = '⚔️';
+                            if (sanction.Punishment) {
+                                if (sanction.Punishment.includes('User Banned')) {
+                                    displayText = 'Guidelines Strike (Ban)';
+                                    emoji = '🚨';
+                                } else if (sanction.Punishment.includes('Minutes')) {
+                                    const minutes = sanction.Punishment.match(/(\d+)\s*Minutes?/i);
+                                    displayText = `Guidelines Strike (${minutes ? minutes[1] + 'Min' : '10Min'})`;
+                                } else if (sanction.Punishment.includes('Hours')) {
+                                    const hours = sanction.Punishment.match(/(\d+)\s*Hours?/i);
+                                    displayText = `Guidelines Strike (${hours ? hours[1] + 'Hr' : '3Hr'})`;
+                                } else if (sanction.Punishment.includes('Day')) {
+                                    const days = sanction.Punishment.match(/(\d+)\s*Days?/i);
+                                    displayText = `Guidelines Strike (${days ? days[1] + 'Day' : '1Day'})`;
+                                }
+                            }
                         }
 
-                        const sanctionType = sanction.SanctionLink ? `[${sanction.SanctionType}](${sanction.SanctionLink})` : sanction.SanctionType;
-                        return `${index + 1}. ${emoji} ${sanctionType} | ${formattedDate} (UTC)`;
+                        const sanctionDisplay = sanction.SanctionLink ? `[**${displayText}**](${sanction.SanctionLink})` : `**${displayText}**`;
+                        return `${index + 1}. ${emoji} ${sanctionDisplay} | <t:${timestamp}:R>`;
                     }).join('\n');
                     sanctionHistory = `**Mod history of ${targetUser}:**\n\n${sanctionList}`;
+
+                    historyNumbers = `⚠️ **Warning Count**: ${warningCount}\n⚔️ **Sanction Count**: ${sanctionCount}\n💳 **Inappropriate Profile**: ${profileCount}\n🤬 **Racism**: ${racismCount}`;
                 } else {
                     sanctionHistory = `**Mod history of ${targetUser}:**\n\n✅ No current mod history`;
+                    historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;
                 }
             } else {
                 sanctionHistory = `**Mod history of ${targetUser}:**\n\n✅ No current mod history`;
+                historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;
             }
         } catch (error) {
             console.log('Failed to fetch sanction history:', error.message);
             sanctionHistory = `**Mod history of ${targetUser}:**\n\n✅ No current mod history`;
+            historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;
         }
 
         const embed = new EmbedBuilder()
             .setTitle('Welcome to the mod panel of Habbo Hotel: Origins')
             .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
-            .setDescription(`${sanctionHistory}\n\n**History numbers:**\nWarning counts: 0\nInappropriate Profile: 0\nPhishing: 0\nRacism: 0\n\n**Nicknames:**\n• ${member.displayName}`)
+            .setDescription(`${sanctionHistory}\n\n**History numbers:**\n${historyNumbers}`)
             .setColor('#ffcc00');
 
         const selectMenu = new StringSelectMenuBuilder()
@@ -87,11 +110,6 @@ module.exports = {
                     value: 'emergency_mute'
                 },
                 {
-                    label: '📮 Direct Message',
-                    description: 'Send a DM from Maria, to a user',
-                    value: 'direct_message'
-                },
-                {
                     label: '⚠️ Verbal Warning',
                     description: 'Moderate a user with only a verbal warning. No sanction.',
                     value: 'verbal_warning'
@@ -100,6 +118,11 @@ module.exports = {
                     label: '⚔️ Moderate with Sanction',
                     description: '10 Min > 3 Hrs > 1 Day > 5 Days > 7 Days > Ban',
                     value: 'moderate_sanction'
+                },
+                {
+                    label: '📮 Direct Message',
+                    description: 'Send a DM from Maria, to a user',
+                    value: 'direct_message'
                 },
                 {
                     label: '💳 Profile Violation',

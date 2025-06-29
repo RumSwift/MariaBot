@@ -2,6 +2,16 @@ const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
+// Import all services
+const messageDeletedService = require('./Services/MessageDeleted');
+const messageEditedService = require('./Services/MessageEdited');
+const roleAddedService = require('./Services/RoleAdded');
+const roleRemovedService = require('./Services/RoleRemoved');
+const memberLeftService = require('./Services/MemberLeft');
+const memberJoinService = require('./Services/MemberJoin');
+const memberBannedService = require('./Services/MemberBanned');
+const memberJoinShortService = require('./Services/MemberJoinShort');
+
 require('dotenv').config();
 const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
@@ -10,7 +20,8 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers
     ]
 });
 
@@ -29,7 +40,6 @@ for (const file of commandFiles) {
         commandData.push(command.data.toJSON());
     }
 }
-
 
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 
@@ -70,6 +80,38 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
         }
     }
+});
+
+// Message deletion event handler
+client.on('messageDelete', async (message) => {
+    await messageDeletedService.handleMessageDelete(message);
+});
+
+// Message edit event handler
+client.on('messageUpdate', async (oldMessage, newMessage) => {
+    await messageEditedService.handleMessageEdit(oldMessage, newMessage);
+});
+
+// Member update event handler (for role changes)
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+    await roleAddedService.handleRoleAdd(oldMember, newMember);
+    await roleRemovedService.handleRoleRemove(oldMember, newMember);
+});
+
+// Member ban event handler
+client.on('guildBanAdd', async (ban) => {
+    await memberBannedService.handleMemberBan(ban);
+});
+
+// Member join event handler
+client.on('guildMemberAdd', async (member) => {
+    await memberJoinService.handleMemberJoin(member);
+    await memberJoinShortService.handleMemberJoinShort(member);
+});
+
+// Member leave event handler
+client.on('guildMemberRemove', async (member) => {
+    await memberLeftService.handleMemberLeave(member);
 });
 
 client.login(TOKEN);

@@ -85,6 +85,8 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             let muteDuration = 0;
             let isBanned = false;
 
+            console.log(`User has ${guidelinesStrikes} existing Guidelines Strikes`);
+
             if (guidelinesStrikes === 0) {
                 muteDuration = 10 * 60 * 1000;
                 punishment = '10 Minutes Muted';
@@ -111,6 +113,8 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
                 await member.ban({ reason: 'Guidelines Strike - Ban' });
             }
 
+            console.log(`Applied punishment: ${punishment}`);
+
             const dmEmbed = new EmbedBuilder()
                 .setTitle('Formal Message from __Habbo Hotel: Origins Server__')
                 .setDescription(`Hello ${targetUser},\n\nThis is a **__community guidelines strike__** regarding your recent behaviour in the Discord.\n\n\`\`\`${publicReason}\`\`\`\n${isBanned ? 'You have been banned from the server.' : `You have been muted for ${punishment.toLowerCase()}.`}\n\nUnfortunately, if this continues, we will have to take further actions. We encourage you to read out community guides, found here: https://discord.com/channels/1252726515712528444/1276211712760090685\n\nIf you have any questions or require clarification, you can use **/dmmod** in any channel for assistance. Alternatively, feel free to reply to this DM to start a conversation with the moderation team.\n\nThank you for understanding.`)
@@ -130,7 +134,7 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('⚔️ Sanction Applied ⚔️')
-                    .setDescription(`**__Community Guidelines Strike__**\n**To: **${targetUser} (${member.displayName})\n**Sanction: ** ${punishment} ${isBanned ? '🚨' : '🔇'}\n\n**__Reason:__**\n\`\`\`${privateReason}\`\`\`\n**__Reason Provided To User:__**\n\`\`\`${publicReason}\`\`\`\n**Mod:** ${interaction.user} (${interaction.user.username})`)
+                    .setDescription(`**__Community Guidelines Strike__**\n**To: **${targetUser} (${member.displayName})\n**Sanction: ** ${punishment} ${isBanned ? '🚨' : '🔇'}\n\n**__Reason:__**\n\`\`\`${privateReason}\`\`\`\n**__Reason Provided To User:__**\n\`\`\`${publicReason}\`\`\`\n**__Message Link:__** ${messageLink}\n\n**Mod:** ${interaction.user} (${interaction.user.username})`)
                     .setColor(isBanned ? 12060423 : 4541125)
                     .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
 
