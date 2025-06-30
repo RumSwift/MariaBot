@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, Partials } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -11,6 +11,7 @@ const memberLeftService = require('./Services/MemberLeft');
 const memberJoinService = require('./Services/MemberJoin');
 const memberBannedService = require('./Services/MemberBanned');
 const memberJoinShortService = require('./Services/MemberJoinShort');
+const modMailService = require('./Services/ModMail');
 
 require('dotenv').config();
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -21,8 +22,11 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
-    ]
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageTyping
+    ],
+    partials: [Partials.Channel, Partials.Message]
 });
 
 const commands = new Map();
@@ -61,6 +65,9 @@ async function deployCommands() {
 client.once('ready', () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     deployCommands();
+
+    // Setup mod mail collectors
+    modMailService.setupCollectors(client);
 });
 
 client.on('interactionCreate', async interaction => {
@@ -90,6 +97,12 @@ client.on('messageDelete', async (message) => {
 // Message edit event handler
 client.on('messageUpdate', async (oldMessage, newMessage) => {
     await messageEditedService.handleMessageEdit(oldMessage, newMessage);
+});
+
+// DM handler for mod mail
+client.on('messageCreate', async (message) => {
+    await modMailService.handleUserDM(message);
+    await modMailService.handleModeratorReply(message);
 });
 
 // Member update event handler (for role changes)
