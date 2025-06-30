@@ -32,6 +32,12 @@ module.exports = {
                 .setRequired(false)),
 
     async execute(interaction) {
+        // IMMEDIATELY respond to prevent interaction expiry
+        await interaction.reply({
+            content: 'Processing your message to the moderation team...',
+            ephemeral: true
+        });
+
         const language = interaction.options.getString('language');
         const userText = interaction.options.getString('text');
         const reportedPlayer = interaction.options.getUser('reported_player');
@@ -58,7 +64,9 @@ module.exports = {
         try {
             const modChannel = await interaction.client.channels.fetch(channelId);
             if (!modChannel) {
-                return await interaction.reply({ content: 'Moderation channel not found. Contact Hbabo Staff.', ephemeral: true });
+                return await interaction.editReply({
+                    content: 'Moderation channel not found. Contact Hbabo Staff.'
+                });
             }
 
             // Create the moderation team embed
@@ -107,33 +115,32 @@ module.exports = {
                 components: [row]
             });
 
-            // Store DMmod in database
-            try {
-                await fetch('http://localhost:3000/api/dmmod/CreateDMmod', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': process.env.API_KEY
-                    },
-                    body: JSON.stringify({
-                        DiscordID: interaction.user.id,
-                        DiscordName: interaction.user.username,
-                        Language: language,
-                        MessageText: userText,
-                        ReportedPlayerID: reportedPlayer ? reportedPlayer.id : null,
-                        ReportedPlayerName: reportedPlayer ? reportedPlayer.username : null,
-                        ReportedMessage: reportedMessage,
-                        ImageURL: imageAttachment ? imageAttachment.url : null,
-                        ModChannelID: channelId,
-                        ModMessageID: modMessage.id
-                    })
-                });
+            // Store DMmod in database (async, don't wait for it)
+            fetch('http://localhost:3000/api/dmmod/CreateDMmod', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': process.env.API_KEY
+                },
+                body: JSON.stringify({
+                    DiscordID: interaction.user.id,
+                    DiscordName: interaction.user.username,
+                    Language: language,
+                    MessageText: userText,
+                    ReportedPlayerID: reportedPlayer ? reportedPlayer.id : null,
+                    ReportedPlayerName: reportedPlayer ? reportedPlayer.username : null,
+                    ReportedMessage: reportedMessage,
+                    ImageURL: imageAttachment ? imageAttachment.url : null,
+                    ModChannelID: channelId,
+                    ModMessageID: modMessage.id
+                })
+            }).then(response => {
                 console.log(`DMmod stored in database for user ${interaction.user.username} (${interaction.user.id})`);
-            } catch (dbError) {
+            }).catch(dbError => {
                 console.log('Failed to store DMmod in database:', dbError.message);
-            }
+            });
 
-            // Send confirmation DM to the user
+            // Send confirmation DM to the user (async, don't wait for it)
             const userDMEmbed = new EmbedBuilder()
                 .setColor('#800080')
                 .setTitle('Formal message from Habbo Hotel: Origins Server')
@@ -146,16 +153,23 @@ module.exports = {
                 .setThumbnail(interaction.client.user.displayAvatarURL({ dynamic: true }))
                 .setFooter({ text: 'Have a nice day!' });
 
-            try {
-                await interaction.user.send({ embeds: [userDMEmbed] });
-                await interaction.reply({ content: 'Your message has been sent to the moderation team and you should receive a confirmation DM shortly.', ephemeral: true });
-            } catch (dmError) {
-                await interaction.reply({ content: 'Your message has been sent to the moderation team, but I couldn\'t send you a confirmation DM. Please check your DM settings.', ephemeral: true });
-            }
+            interaction.user.send({ embeds: [userDMEmbed] }).then(() => {
+                // Update the original response to confirm success
+                interaction.editReply({
+                    content: 'Your message has been sent to the moderation team and you should receive a confirmation DM shortly.'
+                });
+            }).catch(dmError => {
+                // Update the original response even if DM fails
+                interaction.editReply({
+                    content: 'Your message has been sent to the moderation team, but I couldn\'t send you a confirmation DM. Please check your DM settings.'
+                });
+            });
 
         } catch (error) {
             console.error('DMmod error:', error);
-            await interaction.reply({ content: 'Failed to send message to moderation team. Contact Hbabo Staff.', ephemeral: true });
+            await interaction.editReply({
+                content: 'Failed to send message to moderation team. Contact Hbabo Staff.'
+            });
         }
     },
 };

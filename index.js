@@ -12,6 +12,7 @@ const memberJoinService = require('./Services/MemberJoin');
 const memberBannedService = require('./Services/MemberBanned');
 const memberJoinShortService = require('./Services/MemberJoinShort');
 const modMailService = require('./Services/ModMail');
+const dmmodReplyService = require('./Services/DMmodReply'); // Add this line
 
 require('dotenv').config();
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -66,8 +67,9 @@ client.once('ready', () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     deployCommands();
 
-    // Setup mod mail collectors
+    // Setup collectors
     modMailService.setupCollectors(client);
+    dmmodReplyService.setupCollectors(client); // Add this line
 });
 
 client.on('interactionCreate', async interaction => {

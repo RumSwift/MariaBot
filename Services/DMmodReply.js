@@ -167,7 +167,10 @@ module.exports = {
     },
 
     // Set up persistent collectors that work after bot restarts
-    async setupCollectors(client) {
+    setupCollectors(client) {
+        // Store reference to the service object
+        const serviceInstance = this;
+
         client.on('interactionCreate', async (interaction) => {
             if (!interaction.isStringSelectMenu()) return;
 
@@ -182,7 +185,7 @@ module.exports = {
                     console.log(`Extracted message ID: ${messageId}`);
 
                     // Use the message ID to look up the DMmod
-                    await this.handleReplySelection(interaction, null, messageId);
+                    await serviceInstance.handleReplySelection(interaction, null, messageId);
                 }
             }
         });
