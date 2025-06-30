@@ -20,9 +20,15 @@ const authenticateAPI = (req, res, next) => {
 app.use('/api', authenticateAPI);
 
 const sanctionsRoutes = require('./Routes/Sanctions');
+const modmailRoutes = require('./Routes/ModMail');
+const dmmodRoutes = require('./Routes/DMmod');
 app.use('/api/sanctions', sanctionsRoutes);
+app.use('/api/modmail', modmailRoutes);
+app.use('/api/dmmod', dmmodRoutes);
 
 app.listen(PORT, () => {
     console.log(`API Server running on port ${PORT}`);
     console.log(`Sanctions API: http://localhost:${PORT}/api/sanctions`);
+    console.log(`ModMail API: http://localhost:${PORT}/api/modmail`);
+    console.log(`DMmod API: http://localhost:${PORT}/api/dmmod`);
 });

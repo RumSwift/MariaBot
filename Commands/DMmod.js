@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
-const dmmodReplyService = require('../Services/DMmodReply');
+const fetch = require('node-fetch');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -80,8 +80,15 @@ module.exports = {
                 modEmbed.setImage(imageAttachment.url);
             }
 
+            // Send to mod channel with role mention first
+            const modMessage = await modChannel.send({
+                content: `<@&${roleId}>`,
+                embeds: [modEmbed]
+            });
+
+            // Now create the select menu with the message ID
             const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId(`dmmod_reply_${interaction.user.id}`)
+                .setCustomId(`dmmod_reply_${modMessage.id}`)
                 .setPlaceholder('Make a selection')
                 .addOptions([
                     {
@@ -93,12 +100,38 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(selectMenu);
 
-            // Send to mod channel with role mention
-            await modChannel.send({
+            // Edit the message to add the select menu
+            await modMessage.edit({
                 content: `<@&${roleId}>`,
                 embeds: [modEmbed],
                 components: [row]
             });
+
+            // Store DMmod in database
+            try {
+                await fetch('http://localhost:3000/api/dmmod/CreateDMmod', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': process.env.API_KEY
+                    },
+                    body: JSON.stringify({
+                        DiscordID: interaction.user.id,
+                        DiscordName: interaction.user.username,
+                        Language: language,
+                        MessageText: userText,
+                        ReportedPlayerID: reportedPlayer ? reportedPlayer.id : null,
+                        ReportedPlayerName: reportedPlayer ? reportedPlayer.username : null,
+                        ReportedMessage: reportedMessage,
+                        ImageURL: imageAttachment ? imageAttachment.url : null,
+                        ModChannelID: channelId,
+                        ModMessageID: modMessage.id
+                    })
+                });
+                console.log(`DMmod stored in database for user ${interaction.user.username} (${interaction.user.id})`);
+            } catch (dbError) {
+                console.log('Failed to store DMmod in database:', dbError.message);
+            }
 
             // Send confirmation DM to the user
             const userDMEmbed = new EmbedBuilder()
@@ -119,20 +152,6 @@ module.exports = {
             } catch (dmError) {
                 await interaction.reply({ content: 'Your message has been sent to the moderation team, but I couldn\'t send you a confirmation DM. Please check your DM settings.', ephemeral: true });
             }
-
-            // Set up collector for the reply functionality
-            const collector = modChannel.createMessageComponentCollector({
-                componentType: ComponentType.StringSelect,
-                filter: (i) => i.customId.startsWith('dmmod_reply_'),
-                time: 24 * 60 * 60 * 1000 // 24 hours
-            });
-
-            collector.on('collect', async (selectInteraction) => {
-                if (selectInteraction.values[0] === 'reply') {
-                    const originalUserId = selectInteraction.customId.split('_')[2];
-                    await dmmodReplyService.handleReplySelection(selectInteraction, originalUserId);
-                }
-            });
 
         } catch (error) {
             console.error('DMmod error:', error);

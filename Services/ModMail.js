@@ -1,7 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ComponentType, ChannelType } = require('discord.js');
-
-// Store active mod mails in memory (in production, use a database)
-const activeModMails = new Map(); // userId -> { threadId, channelId }
+const fetch = require('node-fetch');
 
 module.exports = {
     async handleUserDM(message) {
@@ -11,21 +9,91 @@ module.exports = {
 
         const userId = message.author.id;
 
-        // Check if user has an active mod mail
-        const activeModMail = activeModMails.get(userId);
-        if (activeModMail) {
-            // Forward message to existing thread
-            try {
-                const thread = await message.client.channels.fetch(activeModMail.threadId);
-                if (thread && !thread.locked) {
-                    await thread.send(`**${message.author.username}**: ${message.content}`);
-                    return;
+        // Check if user is banned from ModMail
+        try {
+            const banCheckResponse = await fetch(`http://localhost:3000/api/modmail/CheckModMailBan/${userId}`, {
+                headers: {
+                    'x-api-key': process.env.API_KEY
                 }
-            } catch (error) {
-                console.log('Failed to forward message to thread:', error.message);
-                // If thread doesn't exist anymore, remove from active list
-                activeModMails.delete(userId);
+            });
+
+            if (banCheckResponse.ok) {
+                const banData = await banCheckResponse.json();
+                if (banData.success && banData.isBanned) {
+                    // User is banned, send restriction message
+                    const bannedEmbed = new EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('🚫 ModMail Access Restricted')
+                        .setDescription(`Hello ${message.author},\n\nYour access to ModMail has been restricted by the moderation team. You are currently unable to contact our moderators through this system.\n\nIf you believe this restriction was applied in error, please contact our support team through alternative channels:\n\n• 🇬🇧 English: https://habbohotelorigins.zendesk.com/hc/en-us\n• 🇪🇸 Español: https://habbohotelorigins.zendesk.com/hc/es\n• 🇧🇷🇵🇹 Português/Brasileiro: https://habbohotelorigins.zendesk.com/hc/pt-br\n\nThank you for understanding.`)
+                        .setThumbnail(message.client.user.displayAvatarURL({ dynamic: true }))
+                        .setFooter({ text: 'Habbo Hotel: Origins Moderation Team' });
+
+                    await message.author.send({ embeds: [bannedEmbed] });
+                    return; // Stop processing
+                }
             }
+        } catch (error) {
+            console.log('Failed to check ModMail ban status:', error.message);
+            // Continue with normal flow if ban check fails
+        }
+
+        // Check if user has an active mod mail in database
+        try {
+            console.log(`Checking active ModMail for user: ${userId}`);
+            const activeResponse = await fetch(`http://localhost:3000/api/modmail/GetActiveModMail/${userId}`, {
+                headers: {
+                    'x-api-key': process.env.API_KEY
+                }
+            });
+
+            if (activeResponse.ok) {
+                const activeData = await activeResponse.json();
+                console.log('Active ModMail response:', JSON.stringify(activeData, null, 2));
+
+                if (activeData.success && activeData.hasActive) {
+                    // Forward message to existing thread
+                    try {
+                        console.log(`Forwarding message to thread: ${activeData.activeModMail.ThreadID}`);
+                        const thread = await message.client.channels.fetch(activeData.activeModMail.ThreadID);
+                        if (thread && !thread.locked) {
+                            await thread.send(`**${message.author.username}**: ${message.content}`);
+                            console.log('Message forwarded successfully');
+
+                            // Update activity timestamp
+                            await fetch(`http://localhost:3000/api/modmail/UpdateActivity/${activeData.activeModMail.ThreadID}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'x-api-key': process.env.API_KEY
+                                }
+                            });
+
+                            return; // Important: Stop here, don't show the "open modmail" prompt
+                        } else {
+                            console.log('Thread is locked or not found, closing ModMail');
+                            // Thread is locked or doesn't exist, close the ModMail in database
+                            await fetch(`http://localhost:3000/api/modmail/CloseActiveModMail/${userId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'x-api-key': process.env.API_KEY
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.log('Failed to forward message to thread:', error.message);
+                        // Close the ModMail if thread doesn't exist
+                        await fetch(`http://localhost:3000/api/modmail/CloseActiveModMail/${userId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'x-api-key': process.env.API_KEY
+                            }
+                        });
+                    }
+                }
+            } else {
+                console.log('Failed to check active ModMail:', activeResponse.status, activeResponse.statusText);
+            }
+        } catch (error) {
+            console.log('Failed to check active ModMail:', error.message);
         }
 
         // No active mod mail, show initial prompt
@@ -84,34 +152,51 @@ module.exports = {
     },
 
     async handleTeamSelection(interaction) {
-        const selectedTeam = interaction.values[0];
+        try {
+            const selectedTeam = interaction.values[0];
 
-        const modal = new ModalBuilder()
-            .setCustomId(`modmail_form_${selectedTeam}`)
-            .setTitle('Modmail');
+            const modal = new ModalBuilder()
+                .setCustomId(`modmail_form_${selectedTeam}`)
+                .setTitle('Modmail');
 
-        const titleInput = new TextInputBuilder()
-            .setCustomId('mail_title')
-            .setLabel('Give Your Request A Title')
-            .setStyle(TextInputStyle.Short)
-            .setPlaceholder('e.g. "Reporting a user"')
-            .setRequired(true)
-            .setMaxLength(100);
+            const titleInput = new TextInputBuilder()
+                .setCustomId('mail_title')
+                .setLabel('Give Your Request A Title')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('e.g. "Reporting a user"')
+                .setRequired(true)
+                .setMaxLength(100);
 
-        const inquiryInput = new TextInputBuilder()
-            .setCustomId('mail_inquiry')
-            .setLabel('What Is Your Inquiry?')
-            .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('Explain your issue/request detailed enough for us to help')
-            .setRequired(true)
-            .setMaxLength(3000);
+            const inquiryInput = new TextInputBuilder()
+                .setCustomId('mail_inquiry')
+                .setLabel('What Is Your Inquiry?')
+                .setStyle(TextInputStyle.Paragraph)
+                .setPlaceholder('Explain your issue/request detailed enough for us to help')
+                .setRequired(true)
+                .setMaxLength(3000);
 
-        const titleRow = new ActionRowBuilder().addComponents(titleInput);
-        const inquiryRow = new ActionRowBuilder().addComponents(inquiryInput);
+            const titleRow = new ActionRowBuilder().addComponents(titleInput);
+            const inquiryRow = new ActionRowBuilder().addComponents(inquiryInput);
 
-        modal.addComponents(titleRow, inquiryRow);
+            modal.addComponents(titleRow, inquiryRow);
 
-        await interaction.showModal(modal);
+            // Show modal directly - this must be the first and only response to the interaction
+            await interaction.showModal(modal);
+
+        } catch (error) {
+            console.log('Error in handleTeamSelection:', error.message);
+            // If showing modal fails, try to send an error message
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({
+                        content: 'There was an error processing your selection. Please try sending a new message to restart the process.',
+                        ephemeral: true
+                    });
+                }
+            } catch (replyError) {
+                console.log('Failed to send error reply:', replyError.message);
+            }
+        }
     },
 
     async handleModMailSubmission(interaction) {
@@ -189,11 +274,25 @@ module.exports = {
                 }
             });
 
-            // Store active mod mail
-            activeModMails.set(interaction.user.id, {
-                threadId: thread.id,
-                channelId: forumChannelId
-            });
+            // Store active mod mail in database
+            try {
+                await fetch('http://localhost:3000/api/modmail/CreateActiveModMail', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': process.env.API_KEY
+                    },
+                    body: JSON.stringify({
+                        DiscordID: interaction.user.id,
+                        ThreadID: thread.id,
+                        ChannelID: forumChannelId,
+                        TeamLanguage: selectedTeam,
+                        Title: title
+                    })
+                });
+            } catch (dbError) {
+                console.log('Failed to store active ModMail in database:', dbError.message);
+            }
 
             console.log(`Mod mail thread created: ${thread.name} (ID: ${thread.id})`);
 
@@ -266,8 +365,17 @@ module.exports = {
             await thread.setLocked(true);
             await thread.send(`🔒 Closed by ${moderator.displayName}!`);
 
-            // Remove from active mod mails
-            activeModMails.delete(userId);
+            // Close ModMail in database
+            try {
+                await fetch(`http://localhost:3000/api/modmail/CloseActiveModMail/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'x-api-key': process.env.API_KEY
+                    }
+                });
+            } catch (dbError) {
+                console.log('Failed to close ModMail in database:', dbError.message);
+            }
 
             await interaction.update({
                 content: 'Mod mail has been closed successfully.',
@@ -308,19 +416,33 @@ module.exports = {
 
         if (!modMailForums.includes(message.channel.parent.id)) return;
 
-        // Find the user ID from active mod mails
-        let userId = null;
-        for (const [uid, modMail] of activeModMails.entries()) {
-            if (modMail.threadId === message.channel.id) {
-                userId = uid;
-                break;
-            }
-        }
-
-        if (!userId) return;
-
+        // Find the user ID from database using thread ID
         try {
+            console.log(`Looking up ModMail for thread: ${message.channel.id}`);
+            const response = await fetch(`http://localhost:3000/api/modmail/GetModMailByThread/${message.channel.id}`, {
+                headers: {
+                    'x-api-key': process.env.API_KEY
+                }
+            });
+
+            if (!response.ok) {
+                console.log('Failed to fetch ModMail by thread:', response.status, response.statusText);
+                return;
+            }
+
+            const data = await response.json();
+            console.log('ModMail by thread response:', JSON.stringify(data, null, 2));
+
+            if (!data.success || !data.found) {
+                console.log('No ModMail found for thread:', message.channel.id);
+                return;
+            }
+
+            const userId = data.modMail.DiscordID;
+            console.log(`Found ModMail for user: ${userId}`);
+
             const user = await message.client.users.fetch(userId);
+            console.log(`Fetched user: ${user.username}`);
 
             const replyEmbed = new EmbedBuilder()
                 .setColor('#800080')
@@ -329,9 +451,19 @@ module.exports = {
                 .setFooter({ text: 'Habbo Hotel: Origins Moderation Team' });
 
             await user.send({ embeds: [replyEmbed] });
+            console.log('Reply sent to user successfully');
+
+            // Update activity timestamp
+            await fetch(`http://localhost:3000/api/modmail/UpdateActivity/${message.channel.id}`, {
+                method: 'PUT',
+                headers: {
+                    'x-api-key': process.env.API_KEY
+                }
+            });
 
             // Add checkmark reaction to indicate message was sent
             await message.react('✅');
+            console.log('Added checkmark reaction');
 
         } catch (error) {
             console.log('Failed to send reply to user:', error.message);
