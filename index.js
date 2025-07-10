@@ -12,7 +12,8 @@ const memberJoinService = require('./Services/MemberJoin');
 const memberBannedService = require('./Services/MemberBanned');
 const memberJoinShortService = require('./Services/MemberJoinShort');
 const modMailService = require('./Services/ModMail');
-const dmmodReplyService = require('./Services/DMmodReply'); // Add this line
+const dmmodReplyService = require('./Services/DMmodReply');
+const reactRemovalService = require('./Services/ReactRemoval'); // Add this line
 
 require('dotenv').config();
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -25,9 +26,10 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.DirectMessageTyping
+        GatewayIntentBits.DirectMessageTyping,
+        GatewayIntentBits.GuildMessageReactions // Add this intent for reactions
     ],
-    partials: [Partials.Channel, Partials.Message]
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction] // Add Reaction partial
 });
 
 const commands = new Map();
@@ -63,13 +65,16 @@ async function deployCommands() {
     }
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     deployCommands();
 
     // Setup collectors
     modMailService.setupCollectors(client);
-    dmmodReplyService.setupCollectors(client); // Add this line
+    dmmodReplyService.setupCollectors(client);
+
+    // Initialize ReactRemoval service with database
+    await reactRemovalService.initialize();
 });
 
 client.on('interactionCreate', async interaction => {
@@ -127,6 +132,11 @@ client.on('guildMemberAdd', async (member) => {
 // Member leave event handler
 client.on('guildMemberRemove', async (member) => {
     await memberLeftService.handleMemberLeave(member);
+});
+
+// Reaction add event handler (NEW)
+client.on('messageReactionAdd', async (reaction, user) => {
+    await reactRemovalService.handleReactionAdd(reaction, user);
 });
 
 client.login(TOKEN);

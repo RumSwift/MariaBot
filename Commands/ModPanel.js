@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType, PermissionFlagsBits } = require('discord.js');
 const fetch = require('node-fetch');
 const emergMute = require('./ModPanel/EmergMute');
 const warning = require('./ModPanel/Warning');
@@ -12,9 +12,42 @@ module.exports = {
         .addUserOption(option =>
             option.setName('user')
                 .setDescription('User to moderate')
-                .setRequired(true)),
+                .setRequired(true))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers), // This hides the command from users without mod permissions
 
     async execute(interaction) {
+        // Define allowed role IDs from environment variables
+        const allowedRoles = [
+            process.env.HABBO_STAFF,
+            process.env.SULAKE_STAFF,
+            process.env.HEAD_MOD,
+            process.env.COMMUNITY_MOD,
+            process.env.LANGUAGE_MOD_ES,
+            process.env.LANGUAGE_MOD_BR
+        ].filter(Boolean); // Filter out any undefined values
+
+        // Check if user has any of the required roles
+        const userRoles = interaction.member.roles.cache;
+        const hasPermission = allowedRoles.some(roleId => userRoles.has(roleId));
+
+        if (!hasPermission) {
+            const errorReply = await interaction.reply({
+                content: 'You do not have permission to use this command.',
+                ephemeral: true
+            });
+
+            // Delete the message after 15 seconds
+            setTimeout(async () => {
+                try {
+                    await errorReply.delete();
+                } catch (error) {
+                    console.log('Could not delete permission error message');
+                }
+            }, 15000);
+
+            return;
+        }
+
         const targetUser = interaction.options.getUser('user');
         const member = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
 
@@ -77,9 +110,9 @@ module.exports = {
                         const sanctionDisplay = sanction.SanctionLink ? `[**${displayText}**](${sanction.SanctionLink})` : `**${displayText}**`;
                         return `${index + 1}. ${emoji} ${sanctionDisplay} | <t:${timestamp}:R>`;
                     }).join('\n');
-                    sanctionHistory = `**Mod history of ${targetUser}:**\n\n${sanctionList}`;
+                    sanctionHistory = `**__Mod history of ${targetUser}:__**\n\n${sanctionList}`;
 
-                    historyNumbers = `⚠️ **Warning Count**: ${warningCount}\n⚔️ **Sanction Count**: ${sanctionCount}\n💳 **Inappropriate Profile**: ${profileCount}\n🤬 **Racism**: ${racismCount}`;
+                    historyNumbers = `⚠️ Warning Count: ${warningCount}\n⚔️ Sanction Count: ${sanctionCount}\n💳 Inappropriate Profile: ${profileCount}\n🤬 Racism: ${racismCount}`;
                 } else {
                     sanctionHistory = `**Mod history of ${targetUser}:**\n\n✅ No current mod history`;
                     historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;

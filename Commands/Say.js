@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -11,9 +11,41 @@ module.exports = {
         .addStringOption(option =>
             option.setName('channel')
                 .setDescription('Channel ID to send message to')
-                .setRequired(false)),
+                .setRequired(false))
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
     async execute(interaction) {
+        // Define allowed role IDs from environment variables
+        const allowedRoles = [
+            process.env.HABBO_STAFF,
+            process.env.SULAKE_STAFF,
+            process.env.HEAD_MOD,
+            process.env.COMMUNITY_MOD,
+            process.env.LANGUAGE_MOD_ES,
+            process.env.LANGUAGE_MOD_BR
+        ].filter(Boolean);
+
+        // Check if user has any of the required roles
+        const userRoles = interaction.member.roles.cache;
+        const hasPermission = allowedRoles.some(roleId => userRoles.has(roleId));
+
+        if (!hasPermission) {
+            const errorReply = await interaction.reply({
+                content: 'You do not have permission to use this command.',
+                ephemeral: true
+            });
+
+            setTimeout(async () => {
+                try {
+                    await errorReply.delete();
+                } catch (error) {
+                    console.log('Could not delete permission error message');
+                }
+            }, 15000);
+
+            return;
+        }
+
         const message = interaction.options.getString('message');
         const channelId = interaction.options.getString('channel');
 

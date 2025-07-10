@@ -22,13 +22,17 @@ app.use('/api', authenticateAPI);
 const sanctionsRoutes = require('./Routes/Sanctions');
 const modmailRoutes = require('./Routes/ModMail');
 const dmmodRoutes = require('./Routes/DMmod');
+const bannedEmojisRoutes = require('./Routes/BannedEmojis'); // Add this line
+
 app.use('/api/sanctions', sanctionsRoutes);
 app.use('/api/modmail', modmailRoutes);
 app.use('/api/dmmod', dmmodRoutes);
+app.use('/api/bannedemojis', bannedEmojisRoutes); // Add this line
 
 app.listen(PORT, () => {
     console.log(`API Server running on port ${PORT}`);
     console.log(`Sanctions API: http://localhost:${PORT}/api/sanctions`);
     console.log(`ModMail API: http://localhost:${PORT}/api/modmail`);
     console.log(`DMmod API: http://localhost:${PORT}/api/dmmod`);
+    console.log(`Banned Emojis API: http://localhost:${PORT}/api/bannedemojis`); // Add this line
 });
