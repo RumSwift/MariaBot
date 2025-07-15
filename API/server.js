@@ -36,5 +36,6 @@ app.listen(PORT, () => {
     console.log(`Sanctions API: http://localhost:${PORT}/api/sanctions`);
     console.log(`ModMail API: http://localhost:${PORT}/api/modmail`);
     console.log(`DMmod API: http://localhost:${PORT}/api/dmmod`);
-    console.log(`Banned Emojis API: http://localhost:${PORT}/api/bannedemojis`); // Add this line
+    console.log(`Banned Emojis API: http://localhost:${PORT}/api/bannedemojis`);
+    console.log(`User Notes API: http://localhost:${PORT}/api/usernotes`);
 });

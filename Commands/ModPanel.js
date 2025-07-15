@@ -8,6 +8,7 @@ const scam = require('./ModPanel/Scam');
 const inappropriateProfile = require('./ModPanel/InappropriateProfile');
 const racism = require('./ModPanel/Racism');
 const addNote = require('./ModPanel/AddNote');
+const viewNotes = require('./ModPanel/ViewNotes');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -348,8 +349,7 @@ module.exports = {
             } else if (customId === "modpanel_add_note") {
                 await addNote(interaction, componentInteraction, targetUser, member);
             } else if (customId === "modpanel_view_notes") {
-                // TODO: Implement view notes functionality
-                await componentInteraction.reply({ content: 'View Notes functionality will be implemented next!', ephemeral: true });
+                await viewNotes(interaction, componentInteraction, targetUser, member);
             }
 
             // Handle select menu interactions
