@@ -7,6 +7,7 @@ const moderate = require('./ModPanel/Moderate');
 const scam = require('./ModPanel/Scam');
 const inappropriateProfile = require('./ModPanel/InappropriateProfile');
 const racism = require('./ModPanel/Racism');
+const addNote = require('./ModPanel/AddNote');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -275,13 +276,6 @@ module.exports = {
                                         .setEmoji({
                                             name: "😡",
                                         }),
-                                    new StringSelectMenuOptionBuilder()
-                                        .setLabel("User Notes")
-                                        .setValue("user_notes")
-                                        .setDescription("View added notes for the user")
-                                        .setEmoji({
-                                            name: "🗂️",
-                                        }),
                                 ),
                         ),
                 )
@@ -299,6 +293,31 @@ module.exports = {
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`## History Numbers\n${historyNumbers}`),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent("## User Notes"),
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Secondary)
+                                .setLabel("Add Note")
+                                .setEmoji({
+                                    name: "📝",
+                                })
+                                .setCustomId("modpanel_add_note"),
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Secondary)
+                                .setLabel("View Notes")
+                                .setEmoji({
+                                    name: "📋",
+                                })
+                                .setCustomId("modpanel_view_notes"),
+                        ),
                 ),
         ];
 
@@ -326,6 +345,11 @@ module.exports = {
                 await scam(interaction, componentInteraction, targetUser, member);
             } else if (customId === "modpanel_send_dm") {
                 await dmUser(interaction, componentInteraction, targetUser, member);
+            } else if (customId === "modpanel_add_note") {
+                await addNote(interaction, componentInteraction, targetUser, member);
+            } else if (customId === "modpanel_view_notes") {
+                // TODO: Implement view notes functionality
+                await componentInteraction.reply({ content: 'View Notes functionality will be implemented next!', ephemeral: true });
             }
 
             // Handle select menu interactions
@@ -340,27 +364,6 @@ module.exports = {
                     await inappropriateProfile(interaction, componentInteraction, targetUser, member);
                 } else if (selectedValue === "racism") {
                     await racism(interaction, componentInteraction, targetUser, member);
-                } else {
-                    // Handle other options that aren't implemented yet
-                    let responseMessage = '';
-
-                    switch (selectedValue) {
-                        case 'user_notes':
-                            responseMessage = 'You selected: User Notes';
-                            break;
-                        default:
-                            responseMessage = 'Unknown option selected';
-                    }
-
-                    await componentInteraction.reply({ content: responseMessage, ephemeral: true });
-
-                    setTimeout(async () => {
-                        try {
-                            await componentInteraction.deleteReply();
-                        } catch (error) {
-                            console.log('Could not delete placeholder message');
-                        }
-                    }, 15000);
                 }
             }
         });
