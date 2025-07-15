@@ -1,9 +1,12 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, TextDisplayBuilder, ThumbnailBuilder, SectionBuilder, SeparatorBuilder, SeparatorSpacingSize, ButtonBuilder, ButtonStyle, ActionRowBuilder, StringSelectMenuBuilder, ContainerBuilder, StringSelectMenuOptionBuilder, MessageFlags } = require('discord.js');
 const fetch = require('node-fetch');
 const emergMute = require('./ModPanel/EmergMute');
 const warning = require('./ModPanel/Warning');
 const dmUser = require('./ModPanel/DMUser');
 const moderate = require('./ModPanel/Moderate');
+const scam = require('./ModPanel/Scam');
+const inappropriateProfile = require('./ModPanel/InappropriateProfile');
+const racism = require('./ModPanel/Racism');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -12,8 +15,7 @@ module.exports = {
         .addUserOption(option =>
             option.setName('user')
                 .setDescription('User to moderate')
-                .setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers), // This hides the command from users without mod permissions
+                .setRequired(true)),
 
     async execute(interaction) {
         // Define allowed role IDs from environment variables
@@ -24,7 +26,7 @@ module.exports = {
             process.env.COMMUNITY_MOD,
             process.env.LANGUAGE_MOD_ES,
             process.env.LANGUAGE_MOD_BR
-        ].filter(Boolean); // Filter out any undefined values
+        ].filter(Boolean);
 
         // Check if user has any of the required roles
         const userRoles = interaction.member.roles.cache;
@@ -36,7 +38,6 @@ module.exports = {
                 ephemeral: true
             });
 
-            // Delete the message after 15 seconds
             setTimeout(async () => {
                 try {
                     await errorReply.delete();
@@ -55,6 +56,59 @@ module.exports = {
             return await interaction.reply({ content: 'User not found in server.', ephemeral: true });
         }
 
+        // Language-based moderation restrictions
+        const modRoles = interaction.member.roles.cache;
+        const targetUserRoles = member.roles.cache;
+
+        // Check if mod is a Community Mod (can moderate anyone)
+        const isCommunityMod = modRoles.has(process.env.COMMUNITY_MOD);
+
+        if (!isCommunityMod) {
+            // Check language mod restrictions
+            const isSpanishMod = modRoles.has(process.env.LANGUAGE_MOD_ES);
+            const isBrazilianMod = modRoles.has(process.env.LANGUAGE_MOD_BR);
+
+            let canModerate = false;
+            let requiredRole = '';
+            let languageName = '';
+
+            if (isSpanishMod) {
+                canModerate = targetUserRoles.has(process.env.ES);
+                requiredRole = `<@&${process.env.ES}>`;
+                languageName = 'Spanish';
+            } else if (isBrazilianMod) {
+                canModerate = targetUserRoles.has(process.env.BR);
+                requiredRole = `<@&${process.env.BR}>`;
+                languageName = 'Brazilian Portuguese';
+            }
+
+            if (!canModerate && (isSpanishMod || isBrazilianMod)) {
+                const { EmbedBuilder } = require('discord.js');
+                const restrictionEmbed = new EmbedBuilder()
+                    .setColor('#FF0000') // Red color
+                    .setTitle('❌ Moderation Restriction')
+                    .setDescription(`Sorry, you can only moderate users with the ${requiredRole} role. If this person needs moderating please tag <@&${process.env.COMMUNITY_MOD}> for assistance.\n\n**Your Language:** ${languageName}\n\n*This message will expire in 15 seconds.*`)
+                    .setTimestamp();
+
+                const restrictionReply = await interaction.reply({
+                    embeds: [restrictionEmbed],
+                    ephemeral: true
+                });
+
+                // Delete the message after 15 seconds
+                setTimeout(async () => {
+                    try {
+                        await restrictionReply.delete();
+                    } catch (error) {
+                        console.log('Could not delete restriction message');
+                    }
+                }, 15000);
+
+                return;
+            }
+        }
+
+        // Fetch sanction history
         let sanctionHistory = '';
         let historyNumbers = '';
         try {
@@ -70,14 +124,13 @@ module.exports = {
                     const sanctions = sanctionData.data.slice(0, 10);
 
                     // Count each sanction type
-                    const allSanctions = sanctionData.data; // Use all sanctions for counting, not just top 10
+                    const allSanctions = sanctionData.data;
                     const warningCount = allSanctions.filter(s => s.SanctionType === 'Verbal Warning').length;
                     const sanctionCount = allSanctions.filter(s => s.SanctionType === 'Guidelines Strike').length;
                     const profileCount = allSanctions.filter(s => s.SanctionType === 'InappropriateProfile').length;
                     const racismCount = allSanctions.filter(s => s.SanctionType === 'Racism').length;
 
                     const sanctionList = sanctions.map((sanction, index) => {
-                        // The timestamp is already in UTC format with Z suffix
                         const utcDate = new Date(sanction.Timestamp);
                         const timestamp = Math.floor(utcDate.getTime() / 1000);
 
@@ -110,9 +163,9 @@ module.exports = {
                         const sanctionDisplay = sanction.SanctionLink ? `[**${displayText}**](${sanction.SanctionLink})` : `**${displayText}**`;
                         return `${index + 1}. ${emoji} ${sanctionDisplay} | <t:${timestamp}:R>`;
                     }).join('\n');
-                    sanctionHistory = `**__Mod history of ${targetUser}:__**\n\n${sanctionList}`;
 
-                    historyNumbers = `⚠️ Warning Count: ${warningCount}\n⚔️ Sanction Count: ${sanctionCount}\n💳 Inappropriate Profile: ${profileCount}\n🤬 Racism: ${racismCount}`;
+                    sanctionHistory = `**Mod history of ${targetUser}:**\n\n${sanctionList}`;
+                    historyNumbers = `⚠️ **Warning Count**: ${warningCount}\n⚔️ **Sanction Count**: ${sanctionCount}\n💳 **Inappropriate Profile**: ${profileCount}\n🤬 **Racism**: ${racismCount}`;
                 } else {
                     sanctionHistory = `**Mod history of ${targetUser}:**\n\n✅ No current mod history`;
                     historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;
@@ -127,121 +180,196 @@ module.exports = {
             historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;
         }
 
-        const embed = new EmbedBuilder()
-            .setTitle('Welcome to the mod panel of Habbo Hotel: Origins')
-            .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
-            .setDescription(`${sanctionHistory}\n\n**History numbers:**\n${historyNumbers}`)
-            .setColor('#ffcc00');
-
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('modpanel_select')
-            .setPlaceholder('Make a selection')
-            .addOptions([
-                {
-                    label: '🔕 Emergency Mute',
-                    description: "In case of emergency, mutes but doesn't notify",
-                    value: 'emergency_mute'
-                },
-                {
-                    label: '⚠️ Verbal Warning',
-                    description: 'Moderate a user with only a verbal warning. No sanction.',
-                    value: 'verbal_warning'
-                },
-                {
-                    label: '⚔️ Moderate with Sanction',
-                    description: '10 Min > 3 Hrs > 1 Day > 5 Days > 7 Days > Ban',
-                    value: 'moderate_sanction'
-                },
-                {
-                    label: '📮 Direct Message',
-                    description: 'Send a DM from Maria, to a user',
-                    value: 'direct_message'
-                },
-                {
-                    label: '💳 Profile Violation',
-                    description: 'Warning > Kick > Ban',
-                    value: 'profile_violation'
-                },
-                {
-                    label: '🤬 Racism',
-                    description: '7 Days > Ban',
-                    value: 'racism'
-                },
-                {
-                    label: '🗂️ User Notes',
-                    description: 'View added notes for the user',
-                    value: 'user_notes'
-                }
-            ]);
-
-        const row = new ActionRowBuilder().addComponents(selectMenu);
+        // Create the Discord v2 component layout
+        const components = [
+            new ContainerBuilder()
+                .setAccentColor(12745742)
+                .addSectionComponents(
+                    new SectionBuilder()
+                        .setThumbnailAccessory(
+                            new ThumbnailBuilder()
+                                .setURL(targetUser.displayAvatarURL({ dynamic: true, size: 128 }))
+                        )
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent("# Habbo Hotel Origins: Modpanel"),
+                            new TextDisplayBuilder().setContent("You're using the official Modpanel of the Habbo Hotel: Origins Discord server. This information is private and should never be shared."),
+                        ),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(false),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent("## Quick Actions"),
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder()
+                        .addComponents(
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Danger)
+                                .setLabel("Emergency Mute (24 Hour)")
+                                .setEmoji({
+                                    name: "🔕",
+                                })
+                                .setCustomId("modpanel_emergency_mute"),
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Danger)
+                                .setLabel("Scam/Phishing (Ban)")
+                                .setEmoji({
+                                    name: "🐟",
+                                })
+                                .setCustomId("modpanel_scam_phishing"),
+                            new ButtonBuilder()
+                                .setStyle(ButtonStyle.Primary)
+                                .setLabel("Send DM")
+                                .setEmoji({
+                                    name: "💬",
+                                })
+                                .setCustomId("modpanel_send_dm"),
+                        ),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large).setDivider(false),
+                )
+                .addSectionComponents(
+                    new SectionBuilder()
+                        .setThumbnailAccessory(
+                            new ThumbnailBuilder()
+                                .setURL("https://icons.iconarchive.com/icons/google/noto-emoji-objects/1024/62953-hammer-icon.png")
+                        )
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent("## Moderate User"),
+                            new TextDisplayBuilder().setContent("Here you can send Verbal Warnings, apply sanctions and more."),
+                        ),
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder()
+                        .addComponents(
+                            new StringSelectMenuBuilder()
+                                .setCustomId("modpanel_moderate_select")
+                                .addOptions(
+                                    new StringSelectMenuOptionBuilder()
+                                        .setLabel("Verbal Warning")
+                                        .setValue("verbal_warning")
+                                        .setDescription("Sends the user an official Verbal Warning")
+                                        .setEmoji({
+                                            name: "⚠️",
+                                        }),
+                                    new StringSelectMenuOptionBuilder()
+                                        .setLabel("Community Rules Violation")
+                                        .setValue("moderate_sanction")
+                                        .setDescription("Apply Sanction: 10 Mins > 3 Hour > 1 Day > 5 Days > Ban")
+                                        .setEmoji({
+                                            name: "⚒️",
+                                        }),
+                                    new StringSelectMenuOptionBuilder()
+                                        .setLabel("Inappropriate Profile")
+                                        .setValue("profile_violation")
+                                        .setDescription("Verbal Warning > Kick after 24 Hours > Ban on Return")
+                                        .setEmoji({
+                                            name: "🃏",
+                                        }),
+                                    new StringSelectMenuOptionBuilder()
+                                        .setLabel("Racism")
+                                        .setValue("racism")
+                                        .setDescription("7 Day Mute > Ban")
+                                        .setEmoji({
+                                            name: "😡",
+                                        }),
+                                    new StringSelectMenuOptionBuilder()
+                                        .setLabel("User Notes")
+                                        .setValue("user_notes")
+                                        .setDescription("View added notes for the user")
+                                        .setEmoji({
+                                            name: "🗂️",
+                                        }),
+                                ),
+                        ),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## History of ${targetUser.toString()}`),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(sanctionHistory),
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small).setDivider(false),
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## History Numbers\n${historyNumbers}`),
+                ),
+        ];
 
         const response = await interaction.reply({
-            embeds: [embed],
-            components: [row],
+            components: components,
+            flags: MessageFlags.IsComponentsV2,
             ephemeral: true
         });
 
         const collector = response.createMessageComponentCollector({
-            componentType: ComponentType.StringSelect,
-            time: 60000
+            time: 300000 // 5 minutes
         });
 
-        collector.on('collect', async (selectInteraction) => {
-            if (selectInteraction.user.id !== interaction.user.id) {
-                return await selectInteraction.reply({ content: 'This panel is not for you.', ephemeral: true });
+        collector.on('collect', async (componentInteraction) => {
+            if (componentInteraction.user.id !== interaction.user.id) {
+                return await componentInteraction.reply({ content: 'This panel is not for you.', ephemeral: true });
             }
 
-            const selectedValue = selectInteraction.values[0];
+            const customId = componentInteraction.customId;
 
-            try {
-                await response.delete();
-            } catch (error) {
-                console.log('Could not delete modpanel embed');
+            // Handle button interactions
+            if (customId === "modpanel_emergency_mute") {
+                await emergMute(interaction, componentInteraction, targetUser, member);
+            } else if (customId === "modpanel_scam_phishing") {
+                await scam(interaction, componentInteraction, targetUser, member);
+            } else if (customId === "modpanel_send_dm") {
+                await dmUser(interaction, componentInteraction, targetUser, member);
             }
 
-            if (selectedValue === 'emergency_mute') {
-                await emergMute(interaction, selectInteraction, targetUser, member);
-            } else if (selectedValue === 'direct_message') {
-                await dmUser(interaction, selectInteraction, targetUser, member);
-            } else if (selectedValue === 'verbal_warning') {
-                await warning(interaction, selectInteraction, targetUser, member);
-            } else if (selectedValue === 'moderate_sanction') {
-                await moderate(interaction, selectInteraction, targetUser, member);
-            } else {
-                let responseMessage = '';
+            // Handle select menu interactions
+            if (customId === "modpanel_moderate_select") {
+                const selectedValue = componentInteraction.values[0];
 
-                switch (selectedValue) {
-                    case 'user_notes':
-                        responseMessage = 'You selected: User Notes';
-                        break;
-                    case 'profile_violation':
-                        responseMessage = 'You selected: Profile Violation';
-                        break;
-                    case 'racism':
-                        responseMessage = 'You selected: Racism';
-                        break;
-                    default:
-                        responseMessage = 'Unknown option selected';
-                }
+                if (selectedValue === "verbal_warning") {
+                    await warning(interaction, componentInteraction, targetUser, member);
+                } else if (selectedValue === "moderate_sanction") {
+                    await moderate(interaction, componentInteraction, targetUser, member);
+                } else if (selectedValue === "profile_violation") {
+                    await inappropriateProfile(interaction, componentInteraction, targetUser, member);
+                } else if (selectedValue === "racism") {
+                    await racism(interaction, componentInteraction, targetUser, member);
+                } else {
+                    // Handle other options that aren't implemented yet
+                    let responseMessage = '';
 
-                await selectInteraction.reply({ content: responseMessage, ephemeral: true });
-
-                setTimeout(async () => {
-                    try {
-                        await selectInteraction.deleteReply();
-                    } catch (error) {
-                        console.log('Could not delete placeholder message');
+                    switch (selectedValue) {
+                        case 'user_notes':
+                            responseMessage = 'You selected: User Notes';
+                            break;
+                        default:
+                            responseMessage = 'Unknown option selected';
                     }
-                }, 15000);
+
+                    await componentInteraction.reply({ content: responseMessage, ephemeral: true });
+
+                    setTimeout(async () => {
+                        try {
+                            await componentInteraction.deleteReply();
+                        } catch (error) {
+                            console.log('Could not delete placeholder message');
+                        }
+                    }, 15000);
+                }
             }
         });
 
         collector.on('end', async () => {
             try {
-                await response.delete();
+                await response.edit({ components: [] });
             } catch (error) {
-                console.log('Could not delete expired modpanel');
+                console.log('Could not disable modpanel components');
             }
         });
     },

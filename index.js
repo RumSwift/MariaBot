@@ -13,7 +13,9 @@ const memberBannedService = require('./Services/MemberBanned');
 const memberJoinShortService = require('./Services/MemberJoinShort');
 const modMailService = require('./Services/ModMail');
 const dmmodReplyService = require('./Services/DMmodReply');
-const reactRemovalService = require('./Services/ReactRemoval'); // Add this line
+const reactRemovalService = require('./Services/ReactRemoval');
+const feedbackEmbed = require('./Services/FeedbackEmbed');
+const bugReportingEmbed = require('./Services/BugReportingEmbed');
 
 require('dotenv').config();
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -27,9 +29,9 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.DirectMessageTyping,
-        GatewayIntentBits.GuildMessageReactions // Add this intent for reactions
+        GatewayIntentBits.GuildMessageReactions
     ],
-    partials: [Partials.Channel, Partials.Message, Partials.Reaction] // Add Reaction partial
+    partials: [Partials.Channel, Partials.Message, Partials.Reaction]
 });
 
 const commands = new Map();
@@ -134,9 +136,15 @@ client.on('guildMemberRemove', async (member) => {
     await memberLeftService.handleMemberLeave(member);
 });
 
-// Reaction add event handler (NEW)
+// Reaction add event handler
 client.on('messageReactionAdd', async (reaction, user) => {
     await reactRemovalService.handleReactionAdd(reaction, user);
+});
+
+// Thread create event handler (NEW)
+client.on('threadCreate', async (thread) => {
+    await feedbackEmbed.handleThreadCreate(thread);
+    await bugReportingEmbed.handleThreadCreate(thread);
 });
 
 client.login(TOKEN);
