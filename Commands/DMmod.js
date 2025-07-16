@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('dmmod')
+        .setContexts(InteractionContextType.Guild)
         .setDescription('Send a message to the moderation team')
         .addStringOption(option =>
             option.setName('language')

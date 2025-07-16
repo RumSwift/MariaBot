@@ -3,6 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('disc
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('say')
+        .setContexts(InteractionContextType.Guild)
         .setDescription('Make the bot send a message')
         .addStringOption(option =>
             option.setName('message')

@@ -4,6 +4,7 @@ const fetch = require('node-fetch');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('modmailban')
+        .setContexts(InteractionContextType.Guild)
         .setDescription('Ban a user from using ModMail')
         .addUserOption(option =>
             option.setName('user')

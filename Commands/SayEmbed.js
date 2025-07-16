@@ -3,6 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextI
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('sayembed')
+        .setContexts(InteractionContextType.Guild)
         .setDescription('Send a custom embed message')
         .addStringOption(option =>
             option.setName('channel')
@@ -21,6 +22,8 @@ module.exports = {
                 .setDescription('Role to tag before the embed')
                 .setRequired(false))
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
+
+
 
     async execute(interaction) {
 

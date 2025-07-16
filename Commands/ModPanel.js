@@ -13,6 +13,7 @@ const viewNotes = require('./ModPanel/ViewNotes');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('modpanel')
+        .setContexts(InteractionContextType.Guild)
         .setDescription('Open moderation panel for a user')
         .addUserOption(option =>
             option.setName('user')
