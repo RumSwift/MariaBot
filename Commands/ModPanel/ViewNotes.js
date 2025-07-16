@@ -25,7 +25,7 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             const noNotesEmbed = new EmbedBuilder()
                 .setTitle(`📋 No Notes Found`)
                 .setDescription(`No notes found for ${targetUser.username}`)
-                .setColor('#98FB98') // Mint green color
+                .setColor('#98FB98')
                 .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
                 .setTimestamp();
 
@@ -37,31 +37,21 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             return;
         }
 
+        const notesList = notes.map(note => {
+            const timestamp = Math.floor(new Date(note.Timestamp).getTime() / 1000);
+            if (note.EmbedLink) {
+                return `📜 [**${note.Title}**](${note.EmbedLink}) | <t:${timestamp}:R>`;
+            } else {
+                return `📜 **${note.Title}** | <t:${timestamp}:R>`;
+            }
+        }).join('\n');
+
         const notesEmbed = new EmbedBuilder()
             .setTitle(`📋 Viewing Notes of ${targetUser.username}`)
-            .setDescription(`**Total Notes:** ${notes.length}\n\n`)
+            .setDescription(`**Total Notes:** ${notes.length}\n\n${notesList}`)
             .setColor('#98FB98')
             .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
             .setTimestamp();
-
-        notes.forEach((note, index) => {
-            const timestamp = Math.floor(new Date(note.Timestamp).getTime() / 1000);
-
-
-            const fieldName = `📜 [**${note.Title}**](${note.EmbedLink}) | <t:${timestamp}:R>`;
-
-
-            let fieldValue = `<t:${timestamp}:R>`;
-            if (note.EmbedLink) {
-                fieldValue = `📜 [**${note.Title}**](${note.EmbedLink}) | <t:${timestamp}:R>`;
-            }
-
-            notesEmbed.addFields({
-                name: fieldName,
-                value: fieldValue,
-                inline: false
-            });
-        });
 
         if (notes.length > 25) {
             notesEmbed.setFooter({
