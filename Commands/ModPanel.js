@@ -139,6 +139,10 @@ module.exports = {
                             emoji = '⚠️';
                         } else if (sanction.SanctionType === 'Guidelines Strike') {
                             emoji = '⚔️';
+                        } else if (sanction.SanctionType === 'InappropriateProfile') {
+                            emoji = '💳';
+                        } else if (sanction.SanctionType === 'Racism') {
+                            emoji = '🤬';
                             if (sanction.Punishment) {
                                 if (sanction.Punishment.includes('User Banned')) {
                                     displayText = 'Guidelines Strike (Ban)';
