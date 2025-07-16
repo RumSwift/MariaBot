@@ -72,11 +72,9 @@ client.once('ready', async () => {
     console.log(`Ready! Logged in as ${client.user.tag}`);
     deployCommands();
 
-    // Setup collectors
     modMailService.setupCollectors(client);
     dmmodReplyService.setupCollectors(client);
 
-    // Initialize ReactRemoval service with database
     await reactRemovalService.initialize();
     await autoMessagesService.initialize();
 });
@@ -103,7 +101,6 @@ client.on('interactionCreate', async interaction => {
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
-    // Check if this is a scam confirmation button
     if (interaction.customId.startsWith('scam_confirm_') || interaction.customId.startsWith('scam_cancel_')) {
         const scamModule = require('./Commands/ModPanel/Scam');
         if (scamModule.handleScamConfirmation) {
@@ -115,51 +112,42 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// Message deletion event handler
 client.on('messageDelete', async (message) => {
     await messageDeletedService.handleMessageDelete(message);
 });
 
-// Message edit event handler
 client.on('messageUpdate', async (oldMessage, newMessage) => {
     await messageEditedService.handleMessageEdit(oldMessage, newMessage);
 });
 
-// DM handler for mod mail
 client.on('messageCreate', async (message) => {
     await modMailService.handleUserDM(message);
     await modMailService.handleModeratorReply(message);
     await autoMessagesService.handleMessage(message);
 });
 
-// Member update event handler (for role changes)
 client.on('guildMemberUpdate', async (oldMember, newMember) => {
     await roleAddedService.handleRoleAdd(oldMember, newMember);
     await roleRemovedService.handleRoleRemove(oldMember, newMember);
 });
 
-// Member ban event handler
 client.on('guildBanAdd', async (ban) => {
     await memberBannedService.handleMemberBan(ban);
 });
 
-// Member join event handler
 client.on('guildMemberAdd', async (member) => {
     await memberJoinService.handleMemberJoin(member);
     await memberJoinShortService.handleMemberJoinShort(member);
 });
 
-// Member leave event handler
 client.on('guildMemberRemove', async (member) => {
     await memberLeftService.handleMemberLeave(member);
 });
 
-// Reaction add event handler
 client.on('messageReactionAdd', async (reaction, user) => {
     await reactRemovalService.handleReactionAdd(reaction, user);
 });
 
-// Thread create event handler (NEW)
 client.on('threadCreate', async (thread) => {
     await feedbackEmbed.handleThreadCreate(thread);
     await bugReportingEmbed.handleThreadCreate(thread);

@@ -53,7 +53,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
         const messageLink = modalSubmission.fields.getTextInputValue('message_link') || null;
 
         try {
-            // Log to mod report channel
             const logChannel = await interaction.client.channels.fetch(process.env.MOD_REPORT_CHANNEL_ID);
             let logMessage = null;
 
@@ -61,14 +60,13 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
                 const logEmbed = new EmbedBuilder()
                     .setTitle('📝 User Note Added')
                     .setDescription(`**__Note Added for User__**\n**User:** ${targetUser} (${member.displayName})\n**User ID:** ${targetUser.id}\n\n**__Title:__** ${noteTitle}\n\n**__Note:__**\n\`\`\`${noteText}\`\`\`${messageLink ? `\n**__Related Message:__** ${messageLink}` : ''}\n\n**Added By:** ${interaction.user} (${interaction.user.username})`)
-                    .setColor('#98FB98') // Mint green color
+                    .setColor('#98FB98')
                     .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
                     .setTimestamp();
 
                 logMessage = await logChannel.send({ embeds: [logEmbed] });
             }
 
-            // Add note to database via API
             const response = await fetch('http://localhost:3000/api/usernotes/AddUserNote', {
                 method: 'POST',
                 headers: {

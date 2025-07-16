@@ -20,7 +20,7 @@ module.exports = {
                 .setRequired(true)),
 
     async execute(interaction) {
-        // Define allowed role IDs from environment variables
+
         const allowedRoles = [
             process.env.HABBO_STAFF,
             process.env.SULAKE_STAFF,
@@ -30,7 +30,6 @@ module.exports = {
             process.env.LANGUAGE_MOD_BR
         ].filter(Boolean);
 
-        // Check if user has any of the required roles
         const userRoles = interaction.member.roles.cache;
         const hasPermission = allowedRoles.some(roleId => userRoles.has(roleId));
 
@@ -44,7 +43,7 @@ module.exports = {
                 try {
                     await errorReply.delete();
                 } catch (error) {
-                    console.log('Could not delete permission error message');
+                    console.log('Could not delete permission error');
                 }
             }, 15000);
 
@@ -58,15 +57,12 @@ module.exports = {
             return await interaction.reply({ content: 'User not found in server.', ephemeral: true });
         }
 
-        // Language-based moderation restrictions
         const modRoles = interaction.member.roles.cache;
         const targetUserRoles = member.roles.cache;
 
-        // Check if mod is a Community Mod (can moderate anyone)
         const isCommunityMod = modRoles.has(process.env.COMMUNITY_MOD);
 
         if (!isCommunityMod) {
-            // Check language mod restrictions
             const isSpanishMod = modRoles.has(process.env.LANGUAGE_MOD_ES);
             const isBrazilianMod = modRoles.has(process.env.LANGUAGE_MOD_BR);
 
@@ -97,7 +93,6 @@ module.exports = {
                     ephemeral: true
                 });
 
-                // Delete the message after 15 seconds
                 setTimeout(async () => {
                     try {
                         await restrictionReply.delete();
@@ -110,7 +105,6 @@ module.exports = {
             }
         }
 
-        // Fetch sanction history
         let sanctionHistory = '';
         let historyNumbers = '';
         try {
@@ -125,7 +119,6 @@ module.exports = {
                 if (sanctionData.success && sanctionData.count > 0) {
                     const sanctions = sanctionData.data.slice(0, 10);
 
-                    // Count each sanction type
                     const allSanctions = sanctionData.data;
                     const warningCount = allSanctions.filter(s => s.SanctionType === 'Verbal Warning').length;
                     const sanctionCount = allSanctions.filter(s => s.SanctionType === 'Guidelines Strike').length;
@@ -182,7 +175,6 @@ module.exports = {
             historyNumbers = `⚠️ **Warning Count**: 0\n⚔️ **Sanction Count**: 0\n💳 **Inappropriate Profile**: 0\n🤬 **Racism**: 0`;
         }
 
-        // Create the Discord v2 component layout
         const components = [
             new ContainerBuilder()
                 .setAccentColor(12745742)
@@ -329,7 +321,7 @@ module.exports = {
         });
 
         const collector = response.createMessageComponentCollector({
-            time: 300000 // 5 minutes
+            time: 300000 // 5 mins
         });
 
         collector.on('collect', async (componentInteraction) => {
@@ -339,7 +331,6 @@ module.exports = {
 
             const customId = componentInteraction.customId;
 
-            // Handle button interactions
             if (customId === "modpanel_emergency_mute") {
                 await emergMute(interaction, componentInteraction, targetUser, member);
             } else if (customId === "modpanel_scam_phishing") {
@@ -352,7 +343,6 @@ module.exports = {
                 await viewNotes(interaction, componentInteraction, targetUser, member);
             }
 
-            // Handle select menu interactions
             if (customId === "modpanel_moderate_select") {
                 const selectedValue = componentInteraction.values[0];
 

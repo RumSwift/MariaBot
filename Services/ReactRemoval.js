@@ -2,10 +2,9 @@ const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
-    // Cached banned emojis (updated from database)
     bannedEmojisCache: [],
     lastCacheUpdate: 0,
-    cacheUpdateInterval: 60 * 60 * 1000, // 1 hour in milliseconds
+    cacheUpdateInterval: 60 * 60 * 1000,
 
     async loadBannedEmojisFromDatabase() {
         try {
@@ -41,22 +40,19 @@ module.exports = {
     },
 
     async handleReactionAdd(reaction, user) {
-        // Don't process bot reactions
+
         if (user.bot) return;
 
-        // Don't process reactions in DMs
         if (!reaction.message.guild) return;
 
         try {
-            // Check and update cache if needed
             await this.checkAndUpdateCache();
 
-            // Get the emoji identifier (could be Unicode or custom emoji)
             let emojiIdentifier = '';
             let emojiAlternatives = [];
 
             if (reaction.emoji.id) {
-                // Custom emoji - use the full format <:name:id>
+
                 emojiIdentifier = `<:${reaction.emoji.name}:${reaction.emoji.id}>`;
                 emojiAlternatives = [
                     emojiIdentifier,
@@ -64,31 +60,24 @@ module.exports = {
                     `:${reaction.emoji.name}:`
                 ];
             } else {
-                // Unicode emoji - use the actual emoji and alternatives
                 emojiIdentifier = reaction.emoji.name;
                 emojiAlternatives = [
-                    reaction.emoji.name, // The actual Unicode character
-                    reaction.emoji.toString(), // Same as above usually
-                    `:${reaction.emoji.name}:`, // :name: format
-                    // Add the text name for common emojis
+                    reaction.emoji.name,
+                    reaction.emoji.toString(),
+                    `:${reaction.emoji.name}:`,
+
                     this.getEmojiTextName(reaction.emoji.name)
-                ].filter(Boolean); // Remove any undefined values
+                ].filter(Boolean);
             }
 
-            // Check if this emoji is banned (check cache against all alternatives)
             const isBanned = this.bannedEmojisCache.some(bannedEmoji =>
                 emojiAlternatives.includes(bannedEmoji)
             );
 
             if (!isBanned) return;
 
-            // Remove the reaction
             await reaction.users.remove(user.id);
-
-            // Send DM to user
             await this.sendWarningDM(user, emojiIdentifier);
-
-            // Log the removal
             await this.logReactionRemoval(reaction, user, emojiIdentifier);
 
         } catch (error) {
@@ -100,7 +89,7 @@ module.exports = {
         try {
             const { EmbedBuilder } = require('discord.js');
 
-            // Get the emoji display for the DM
+
             let emojiDisplay = emojiIdentifier;
 
             const dmEmbed = new EmbedBuilder()
@@ -118,7 +107,7 @@ If you have any questions or need clarification, you can use /dmmod in any chann
 Thank you for your understanding.
 
 - Habbo Hotel: Origins Moderation -`)
-                .setColor('#FF8C00') // Dark orange color
+                .setColor('#FF8C00')
                 .setTimestamp();
 
             await user.send({ embeds: [dmEmbed] });
@@ -126,7 +115,7 @@ Thank you for your understanding.
 
         } catch (error) {
             console.log(`Failed to send warning DM to ${user.username}:`, error.message);
-            // Don't throw error - continue with logging even if DM fails
+
         }
     },
 
@@ -135,26 +124,23 @@ Thank you for your understanding.
             const logChannel = await reaction.message.client.channels.fetch(process.env.REACTION_REMOVAL_LOG_CHANNEL_ID);
             if (!logChannel) return;
 
-            // Fetch the full message to ensure we have content
             let message = reaction.message;
             if (reaction.message.partial) {
                 message = await reaction.message.fetch();
             }
 
-            // Get message content
+
             let messageContent = message.content || '*No text content*';
 
-            // Get the emoji display
             let emojiDisplay = '';
             if (reaction.emoji.id) {
-                // Custom emoji
+
                 emojiDisplay = `<:${reaction.emoji.name}:${reaction.emoji.id}>`;
             } else {
-                // Unicode emoji
                 emojiDisplay = reaction.emoji.toString();
             }
 
-            // Create the embed with the new format
+
             const description = `**The following emoji violation was detected and removed:**
 
 **__User:__**
@@ -187,13 +173,11 @@ ${message.url}
         }
     },
 
-    // Initialize the service (call this when bot starts)
     async initialize() {
         console.log('Initializing ReactRemoval service...');
         await this.loadBannedEmojisFromDatabase();
     },
 
-    // Force refresh cache (for manual updates)
     async refreshCache() {
         console.log('Manually refreshing banned emojis cache...');
         const success = await this.loadBannedEmojisFromDatabase();
@@ -206,7 +190,7 @@ ${message.url}
         }
     },
 
-    // Helper method to get text name for common Unicode emojis
+    // testing purposes  - get name of emoji (usless)
     getEmojiTextName(unicodeEmoji) {
         const emojiMap = {
             '♿': 'wheelchair',
@@ -218,7 +202,6 @@ ${message.url}
         return emojiMap[unicodeEmoji];
     },
 
-    // Method to get current cache status (for debugging)
     getCacheInfo() {
         return {
             cachedEmojis: this.bannedEmojisCache.length,

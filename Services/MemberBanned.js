@@ -9,7 +9,6 @@ module.exports = {
             const logChannel = await ban.guild.client.channels.fetch(process.env.MEMBER_BANNED_LOG_CHANNEL_ID);
             if (!logChannel) return;
 
-            // Try to get member info if they were in the server
             let joinedTimestamp = null;
             try {
                 const member = await ban.guild.members.fetch(ban.user.id).catch(() => null);
@@ -17,7 +16,7 @@ module.exports = {
                     joinedTimestamp = member.joinedTimestamp;
                 }
             } catch (error) {
-                // Member already banned, can't fetch
+                // They're gone, cannot grab
             }
 
             const embed = new EmbedBuilder()

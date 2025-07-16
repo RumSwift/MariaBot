@@ -27,7 +27,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
         const profileReason = modalSubmission.fields.getTextInputValue('profile_reason');
 
         try {
-            // Get existing inappropriate profile sanctions count
             let profileViolations = 0;
             try {
                 const apiResponse = await fetch(`http://localhost:3000/api/sanctions/GetSanctionsByDiscordID/${targetUser.id}`, {
@@ -57,14 +56,14 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             console.log(`User has ${profileViolations} existing Inappropriate Profile violations`);
 
             if (profileViolations === 0) {
-                // First offense - Warning
+                // Warn
                 punishment = '24 Hour Warning';
                 dmTitle = 'Profile Violation Warning - Habbo Hotel: Origins';
                 dmDescription = `Hello ${targetUser},\n\nThis is an **official warning** regarding your current profile on our Discord server.\n\n**Issue:** Your profile contains inappropriate content that violates our community guidelines.\n\n**Details:** ${profileReason}\n\n**Required Action:** You have **24 hours** to update your profile (avatar, banner, status, etc.) to comply with our community standards.\n\n**Next Steps:** If your profile is not updated within 24 hours, further moderation actions will be taken, including removal from the server.\n\nPlease review our community guidelines here: https://discord.com/channels/1252726515712528444/1276211712760090685\n\nIf you have any questions, please use /dmmod for assistance.\n\nThank you for your understanding.`;
                 logTitle = '💳 Inappropriate Profile Warning 💳';
                 logDescription = `**__Profile Violation Warning (24 Hours)__**\n**To: **${targetUser} (${member.displayName})\n**Action: ** 24 Hour Warning 💳\n\n**__Profile Issue:__**\n\`\`\`${profileReason}\`\`\`\n\n**Mod:** ${interaction.user} (${interaction.user.username})`;
             } else if (profileViolations === 1) {
-                // Second offense - Kick
+                // Kick
                 punishment = 'User Kicked';
                 isKicked = true;
                 dmTitle = 'Profile Violation - Removed from Server';
@@ -74,7 +73,7 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
 
                 await member.kick('Inappropriate Profile - Second Violation');
             } else if (profileViolations >= 2) {
-                // Third+ offense - Ban
+                // Ban
                 punishment = 'User Banned';
                 isBanned = true;
                 dmTitle = 'Permanent Ban - Profile Violations';
@@ -87,9 +86,8 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
 
             console.log(`Applied punishment: ${punishment}`);
 
-            // Send DM to user
             try {
-                if (!isBanned) { // Only send DM if not banned (banned users can't receive DMs from the server)
+                if (!isBanned) {
                     const dmEmbed = new EmbedBuilder()
                         .setTitle(dmTitle)
                         .setDescription(dmDescription)
@@ -102,20 +100,18 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
                 console.log('Failed to send DM to user:', dmError.message);
             }
 
-            // Log to mod channel
             const logChannel = await interaction.client.channels.fetch(process.env.MOD_REPORT_CHANNEL_ID);
             let logMessage = null;
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
                     .setTitle(logTitle)
                     .setDescription(logDescription)
-                    .setColor('#FF69B4') // Pink color
+                    .setColor('#FF69B4')
                     .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
 
                 logMessage = await logChannel.send({ embeds: [logEmbed] });
             }
 
-            // Add to database
             try {
                 await fetch('http://localhost:3000/api/sanctions/AddSanction', {
                     method: 'POST',

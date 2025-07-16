@@ -15,7 +15,6 @@ router.post('/ModMailBan', async (req, res) => {
 
         const connection = await pool.getConnection();
 
-        // Check if user is already banned
         const [existingBan] = await connection.execute(
             'SELECT * FROM ModMailBan WHERE DiscordID = ?',
             [DiscordID]
@@ -29,7 +28,6 @@ router.post('/ModMailBan', async (req, res) => {
             });
         }
 
-        // Add the ban
         const [result] = await connection.execute(
             'INSERT INTO ModMailBan (DiscordID, BannedByID) VALUES (?, ?)',
             [DiscordID, BannedByID]
@@ -109,7 +107,6 @@ router.delete('/ModMailBan/:discordId', async (req, res) => {
     }
 });
 
-// Create active ModMail entry
 router.post('/CreateActiveModMail', async (req, res) => {
     try {
         const { DiscordID, ThreadID, ChannelID, TeamLanguage, Title } = req.body;
@@ -123,7 +120,6 @@ router.post('/CreateActiveModMail', async (req, res) => {
 
         const connection = await pool.getConnection();
 
-        // Check if user already has an active ModMail
         const [existing] = await connection.execute(
             'SELECT * FROM ActiveModMails WHERE DiscordID = ? AND Status = "OPEN"',
             [DiscordID]
@@ -138,7 +134,6 @@ router.post('/CreateActiveModMail', async (req, res) => {
             });
         }
 
-        // Create new active ModMail
         const [result] = await connection.execute(
             'INSERT INTO ActiveModMails (DiscordID, ThreadID, ChannelID, TeamLanguage, Title) VALUES (?, ?, ?, ?, ?)',
             [DiscordID, ThreadID, ChannelID, TeamLanguage, Title]
@@ -160,13 +155,11 @@ router.post('/CreateActiveModMail', async (req, res) => {
     }
 });
 
-// Get active ModMail for user
 router.get('/GetActiveModMail/:discordId', async (req, res) => {
     try {
         const { discordId } = req.params;
         const connection = await pool.getConnection();
 
-        // Get the most recent OPEN ModMail for this user
         const [rows] = await connection.execute(
             'SELECT * FROM ActiveModMails WHERE DiscordID = ? AND Status = "OPEN" ORDER BY CreatedAt DESC LIMIT 1',
             [discordId]
@@ -189,7 +182,6 @@ router.get('/GetActiveModMail/:discordId', async (req, res) => {
     }
 });
 
-// Get ModMail by thread ID
 router.get('/GetModMailByThread/:threadId', async (req, res) => {
     try {
         const { threadId } = req.params;
@@ -217,7 +209,6 @@ router.get('/GetModMailByThread/:threadId', async (req, res) => {
     }
 });
 
-// Close active ModMail
 router.put('/CloseActiveModMail/:discordId', async (req, res) => {
     try {
         const { discordId } = req.params;
@@ -250,7 +241,6 @@ router.put('/CloseActiveModMail/:discordId', async (req, res) => {
     }
 });
 
-// Update last activity for ModMail
 router.put('/UpdateActivity/:threadId', async (req, res) => {
     try {
         const { threadId } = req.params;

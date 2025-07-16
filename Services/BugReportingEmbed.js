@@ -2,20 +2,15 @@ const { EmbedBuilder, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle 
 
 module.exports = {
     async handleThreadCreate(thread) {
-        // Check if this is a thread in the bug reporting forum
         if (thread.parentId !== process.env.BUG_REPORTING_FORUM) return;
 
-        // Only handle forum threads (not regular text channel threads)
         if (thread.type !== ChannelType.PublicThread) return;
 
-        // Make sure the parent is actually a forum channel
         if (!thread.parent || thread.parent.type !== ChannelType.GuildForum) return;
 
         try {
-            // Get the thread owner (original poster)
             const threadOwner = thread.ownerId;
 
-            // Create the embed with the bug reporting content
             const embed = new EmbedBuilder()
                 .setTitle('🐛 Welcome to the Bug Report Channel!')
                 .setDescription(`## GENERAL NOTES 📋
@@ -34,7 +29,6 @@ module.exports = {
 Please report feedback in our dedicated forum here. Do not post any game feedback in [this forum](https://discord.com/channels/1252726515712528444/1336051320406282311/1336051361984417855).`)
                 .setColor('#5865F2'); // Discord blurple color
 
-            // Create the link button
             const linkButton = new ButtonBuilder()
                 .setLabel('Support Channel Guidelines')
                 .setURL('https://discord.com/channels/1252726515712528444/1277639596062015500')
@@ -42,7 +36,6 @@ Please report feedback in our dedicated forum here. Do not post any game feedbac
 
             const row = new ActionRowBuilder().addComponents(linkButton);
 
-            // Post the embed with the button in the thread
             await thread.send({
                 embeds: [embed],
                 components: [row]

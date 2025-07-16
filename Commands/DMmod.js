@@ -32,9 +32,8 @@ module.exports = {
                 .setRequired(false)),
 
     async execute(interaction) {
-        // IMMEDIATELY respond to prevent interaction expiry
         await interaction.reply({
-            content: 'Processing your message to the moderation team...',
+            content: 'Processing your message to the mod team...',
             ephemeral: true
         });
 
@@ -44,7 +43,6 @@ module.exports = {
         const reportedMessage = interaction.options.getString('reported_message');
         const imageAttachment = interaction.options.getAttachment('image');
 
-        // Determine channel and role based on language
         let channelId, roleId;
         switch (language) {
             case 'ES':
@@ -69,7 +67,6 @@ module.exports = {
                 });
             }
 
-            // Create the moderation team embed
             const modEmbed = new EmbedBuilder()
                 .setColor('#800080')
                 .setTitle('💬 New message for the Mod team')
@@ -80,7 +77,6 @@ module.exports = {
                 .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
                 .setFooter({ text: 'React to this msg with a ✅ if you are taking care of this message.' });
 
-            // Add the user's message in a code block
             const userMessageContent = `Hello <@&${roleId}>,\n\n${userText}`;
             modEmbed.addFields({ name: '\u200B', value: `\`\`\`${userMessageContent}\`\`\``, inline: false });
 
@@ -88,13 +84,11 @@ module.exports = {
                 modEmbed.setImage(imageAttachment.url);
             }
 
-            // Send to mod channel with role mention first
             const modMessage = await modChannel.send({
                 content: `<@&${roleId}>`,
                 embeds: [modEmbed]
             });
 
-            // Now create the select menu with the message ID
             const selectMenu = new StringSelectMenuBuilder()
                 .setCustomId(`dmmod_reply_${modMessage.id}`)
                 .setPlaceholder('Make a selection')
@@ -108,14 +102,12 @@ module.exports = {
 
             const row = new ActionRowBuilder().addComponents(selectMenu);
 
-            // Edit the message to add the select menu
             await modMessage.edit({
                 content: `<@&${roleId}>`,
                 embeds: [modEmbed],
                 components: [row]
             });
 
-            // Store DMmod in database (async, don't wait for it)
             fetch('http://localhost:3000/api/dmmod/CreateDMmod', {
                 method: 'POST',
                 headers: {
@@ -140,7 +132,6 @@ module.exports = {
                 console.log('Failed to store DMmod in database:', dbError.message);
             });
 
-            // Send confirmation DM to the user (async, don't wait for it)
             const userDMEmbed = new EmbedBuilder()
                 .setColor('#800080')
                 .setTitle('Formal message from Habbo Hotel: Origins Server')
@@ -154,12 +145,10 @@ module.exports = {
                 .setFooter({ text: 'Have a nice day!' });
 
             interaction.user.send({ embeds: [userDMEmbed] }).then(() => {
-                // Update the original response to confirm success
                 interaction.editReply({
                     content: 'Your message has been sent to the moderation team and you should receive a confirmation DM shortly.'
                 });
             }).catch(dmError => {
-                // Update the original response even if DM fails
                 interaction.editReply({
                     content: 'Your message has been sent to the moderation team, but I couldn\'t send you a confirmation DM. Please check your DM settings.'
                 });
@@ -168,7 +157,7 @@ module.exports = {
         } catch (error) {
             console.error('DMmod error:', error);
             await interaction.editReply({
-                content: 'Failed to send message to moderation team. Contact Hbabo Staff.'
+                content: 'Failed to send message to moderation team. Contact Habbo Staff.'
             });
         }
     },

@@ -12,7 +12,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
     async execute(interaction) {
-        // Define allowed role IDs from environment variables
+
         const allowedRoles = [
             process.env.HABBO_STAFF,
             process.env.SULAKE_STAFF,
@@ -22,7 +22,6 @@ module.exports = {
             process.env.LANGUAGE_MOD_BR
         ].filter(Boolean);
 
-        // Check if user has any of the required roles
         const userRoles = interaction.member.roles.cache;
         const hasPermission = allowedRoles.some(roleId => userRoles.has(roleId));
 
@@ -36,7 +35,7 @@ module.exports = {
                 try {
                     await errorReply.delete();
                 } catch (error) {
-                    console.log('Could not delete permission error message');
+                    console.log('Could not delete permission error');
                 }
             }, 15000);
 
@@ -45,7 +44,6 @@ module.exports = {
 
         const targetUser = interaction.options.getUser('user');
 
-        // Prevent banning bots
         if (targetUser.bot) {
             return await interaction.reply({
                 content: 'Cannot ban bots from ModMail.',
@@ -53,7 +51,6 @@ module.exports = {
             });
         }
 
-        // Prevent self-banning
         if (targetUser.id === interaction.user.id) {
             return await interaction.reply({
                 content: 'You cannot ban yourself from ModMail.',
@@ -62,7 +59,6 @@ module.exports = {
         }
 
         try {
-            // Call API to ban user
             const response = await fetch('http://localhost:3000/api/modmail/ModMailBan', {
                 method: 'POST',
                 headers: {
@@ -87,7 +83,6 @@ module.exports = {
                 throw new Error(result.error || 'Unknown error occurred');
             }
 
-            // Log the ban action
             const logChannel = await interaction.client.channels.fetch(process.env.MOD_ACTIONS_LOG_CHANNEL_ID);
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
@@ -100,7 +95,6 @@ module.exports = {
                 await logChannel.send({ embeds: [logEmbed] });
             }
 
-            // Send confirmation
             const confirmEmbed = new EmbedBuilder()
                 .setColor('#FF0000')
                 .setTitle('✅ ModMail Ban Applied')

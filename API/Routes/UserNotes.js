@@ -2,7 +2,6 @@ const express = require('express');
 const { pool } = require('../database');
 const router = express.Router();
 
-// Add a new user note
 router.post('/AddUserNote', async (req, res) => {
     try {
         const {
@@ -46,7 +45,6 @@ router.post('/AddUserNote', async (req, res) => {
     }
 });
 
-// Get all notes for a user
 router.get('/GetUserNotes/:discordId', async (req, res) => {
     try {
         const { discordId } = req.params;
@@ -74,7 +72,6 @@ router.get('/GetUserNotes/:discordId', async (req, res) => {
     }
 });
 
-// Get note statistics for a user
 router.get('/GetUserNoteStats/:discordId', async (req, res) => {
     try {
         const { discordId } = req.params;
@@ -107,7 +104,6 @@ router.get('/GetUserNoteStats/:discordId', async (req, res) => {
     }
 });
 
-// Get a specific note by ID
 router.get('/GetNote/:noteId', async (req, res) => {
     try {
         const { noteId } = req.params;
@@ -141,7 +137,6 @@ router.get('/GetNote/:noteId', async (req, res) => {
     }
 });
 
-// Update a note (optional feature for future use)
 router.put('/UpdateNote/:noteId', async (req, res) => {
     try {
         const { noteId } = req.params;
@@ -184,7 +179,6 @@ router.put('/UpdateNote/:noteId', async (req, res) => {
     }
 });
 
-// Delete a note (soft delete - mark as inactive, optional feature)
 router.delete('/DeleteNote/:noteId', async (req, res) => {
     try {
         const { noteId } = req.params;

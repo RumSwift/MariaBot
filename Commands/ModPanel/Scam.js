@@ -62,19 +62,20 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
 
     } catch (error) {
         console.error('Error in scam confirmation setup:', error);
+        // General tests/error handling from API docs
         try {
             if (!selectInteraction.replied && !selectInteraction.deferred) {
                 await selectInteraction.reply({
-                    content: '❌ **Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.',
+                    content: '**Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.',
                     ephemeral: true
                 });
             } else if (selectInteraction.deferred) {
                 await selectInteraction.editReply({
-                    content: '❌ **Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.'
+                    content: '**Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.'
                 });
             } else {
                 await selectInteraction.followUp({
-                    content: '❌ **Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.',
+                    content: '**Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.',
                     ephemeral: true
                 });
             }
@@ -92,7 +93,7 @@ module.exports.handleScamConfirmation = async (buttonInteraction) => {
     try {
         if (!global.scamConfirmations) {
             await buttonInteraction.reply({
-                content: '❌ This confirmation has expired. Please try the command again.',
+                content: 'This confirmation has expired. Please try the command again.',
                 ephemeral: true
             });
             return true;
@@ -101,7 +102,7 @@ module.exports.handleScamConfirmation = async (buttonInteraction) => {
         const confirmationData = global.scamConfirmations.get(buttonInteraction.customId);
         if (!confirmationData) {
             await buttonInteraction.reply({
-                content: '❌ This confirmation has expired. Please try the command again.',
+                content: 'This confirmation has expired. Please try the command again.',
                 ephemeral: true
             });
             return true;
@@ -126,7 +127,7 @@ module.exports.handleScamConfirmation = async (buttonInteraction) => {
             );
         } else if (buttonInteraction.customId.startsWith('scam_cancel_')) {
             await buttonInteraction.editReply({
-                content: '❌ **Scam/Phishing ban cancelled.**'
+                content: '**Scam/Phishing ban cancelled.**'
             });
         }
 
@@ -142,12 +143,12 @@ module.exports.handleScamConfirmation = async (buttonInteraction) => {
         try {
             if (!buttonInteraction.deferred && !buttonInteraction.replied) {
                 await buttonInteraction.reply({
-                    content: '❌ An error occurred processing your confirmation: ' + error.message,
+                    content: 'An error occurred: ' + error.message,
                     ephemeral: true
                 });
             } else {
                 await buttonInteraction.editReply({
-                    content: '❌ An error occurred processing your confirmation: ' + error.message
+                    content: 'An error occurred: ' + error.message
                 });
             }
         } catch (replyError) {

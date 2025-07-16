@@ -2,7 +2,7 @@ const express = require('express');
 const { pool } = require('../database');
 const router = express.Router();
 
-// Get all auto messages
+
 router.get('/GetAutoMessages', async (req, res) => {
     try {
         const connection = await pool.getConnection();
@@ -28,7 +28,6 @@ router.get('/GetAutoMessages', async (req, res) => {
     }
 });
 
-// Add a new auto message
 router.post('/AddAutoMessage', async (req, res) => {
     try {
         const { ChannelID, Message, Title } = req.body;
@@ -64,7 +63,6 @@ router.post('/AddAutoMessage', async (req, res) => {
     }
 });
 
-// Update an existing auto message
 router.put('/UpdateAutoMessage/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -107,7 +105,7 @@ router.put('/UpdateAutoMessage/:id', async (req, res) => {
     }
 });
 
-// Delete an auto message
+
 router.delete('/DeleteAutoMessage/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -141,7 +139,7 @@ router.delete('/DeleteAutoMessage/:id', async (req, res) => {
     }
 });
 
-// Get auto messages for a specific channel
+
 router.get('/GetAutoMessagesByChannel/:channelId', async (req, res) => {
     try {
         const { channelId } = req.params;

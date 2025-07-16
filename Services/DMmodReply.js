@@ -6,9 +6,8 @@ module.exports = {
         try {
             console.log(`Handling reply selection - UserId: ${originalUserId}, MessageId: ${messageId}`);
 
-            // If originalUserId is not provided, look up from database using messageId
+
             if (!originalUserId) {
-                // Use provided messageId or fall back to interaction message ID
                 const lookupMessageId = messageId || selectInteraction.message.id;
                 console.log(`Looking up DMmod with message ID: ${lookupMessageId}`);
 
@@ -70,11 +69,9 @@ module.exports = {
                 });
 
                 const replyText = modalSubmission.fields.getTextInputValue('reply_text');
-
-                // Get the original user who sent the /dmmod
                 const originalUser = await selectInteraction.client.users.fetch(originalUserId);
 
-                // Send DM to original user
+
                 const dmEmbed = new EmbedBuilder()
                     .setColor('#800080')
                     .setTitle('Formal message from Habbo Hotel: Origins Server')
@@ -91,7 +88,6 @@ module.exports = {
                     });
                 }
 
-                // Update the original embed to remove selection and add reply
                 const originalEmbed = selectInteraction.message.embeds[0];
                 const updatedEmbed = new EmbedBuilder()
                     .setColor(originalEmbed.color)
@@ -100,32 +96,28 @@ module.exports = {
                     .setThumbnail(originalEmbed.thumbnail?.url)
                     .setFooter(originalEmbed.footer);
 
-                // Copy original fields
+
                 if (originalEmbed.fields) {
                     originalEmbed.fields.forEach(field => {
                         updatedEmbed.addFields({ name: field.name, value: field.value, inline: field.inline });
                     });
                 }
 
-                // Add the reply section
                 updatedEmbed.addFields({
                     name: '\u200B',
                     value: `-------------------\n\n**Replied By:** ${selectInteraction.user}\n\n\`\`\`${replyText}\`\`\``,
                     inline: false
                 });
 
-                // Copy image if it exists
                 if (originalEmbed.image) {
                     updatedEmbed.setImage(originalEmbed.image.url);
                 }
 
-                // Update the message without components (removes the selection menu)
                 await selectInteraction.message.edit({
                     embeds: [updatedEmbed],
                     components: []
                 });
 
-                // Update DMmod status in database
                 try {
                     await fetch(`http://localhost:3000/api/dmmod/UpdateDMmodStatus/${selectInteraction.message.id}`, {
                         method: 'PUT',
@@ -166,25 +158,24 @@ module.exports = {
         }
     },
 
-    // Set up persistent collectors that work after bot restarts
+
     setupCollectors(client) {
-        // Store reference to the service object
+
         const serviceInstance = this;
 
         client.on('interactionCreate', async (interaction) => {
             if (!interaction.isStringSelectMenu()) return;
 
-            // Handle DMmod reply selections - now using message ID in custom ID
             if (interaction.customId.startsWith('dmmod_reply_')) {
                 console.log(`DMmod reply interaction received for message: ${interaction.message.id}`);
                 console.log(`Custom ID: ${interaction.customId}`);
 
                 if (interaction.values[0] === 'reply') {
-                    // Extract message ID from custom ID
+
                     const messageId = interaction.customId.replace('dmmod_reply_', '');
                     console.log(`Extracted message ID: ${messageId}`);
 
-                    // Use the message ID to look up the DMmod
+
                     await serviceInstance.handleReplySelection(interaction, null, messageId);
                 }
             }

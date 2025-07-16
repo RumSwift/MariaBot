@@ -2,7 +2,6 @@ const express = require('express');
 const { pool } = require('../database');
 const router = express.Router();
 
-// Get all active banned emojis (for bot caching)
 router.get('/GetBannedEmojis', async (req, res) => {
     try {
         const connection = await pool.getConnection();
@@ -28,7 +27,7 @@ router.get('/GetBannedEmojis', async (req, res) => {
     }
 });
 
-// Add a new banned emoji
+// No add emoji command yet so usless but may add in future as I'll need to change charset of db
 router.post('/AddBannedEmoji', async (req, res) => {
     try {
         const {
@@ -57,7 +56,6 @@ router.post('/AddBannedEmoji', async (req, res) => {
 
         const connection = await pool.getConnection();
 
-        // Check if emoji already exists
         const [existing] = await connection.execute(
             'SELECT * FROM BannedEmojis WHERE EmojiIdentifier = ? AND IsActive = TRUE',
             [EmojiIdentifier]
@@ -96,7 +94,6 @@ router.post('/AddBannedEmoji', async (req, res) => {
     }
 });
 
-// Remove a banned emoji (soft delete)
 router.delete('/RemoveBannedEmoji/:identifier', async (req, res) => {
     try {
         const { identifier } = req.params;
@@ -132,7 +129,6 @@ router.delete('/RemoveBannedEmoji/:identifier', async (req, res) => {
     }
 });
 
-// Get banned emoji statistics
 router.get('/GetBannedEmojiStats', async (req, res) => {
     try {
         const connection = await pool.getConnection();
@@ -169,7 +165,6 @@ router.get('/GetBannedEmojiStats', async (req, res) => {
     }
 });
 
-// Get all banned emojis with full details (for management)
 router.get('/GetAllBannedEmojis', async (req, res) => {
     try {
         const connection = await pool.getConnection();

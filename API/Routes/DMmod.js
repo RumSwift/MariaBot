@@ -2,7 +2,6 @@ const express = require('express');
 const { pool } = require('../database');
 const router = express.Router();
 
-// Create new DMmod entry
 router.post('/CreateDMmod', async (req, res) => {
     try {
         const {
@@ -51,7 +50,6 @@ router.post('/CreateDMmod', async (req, res) => {
     }
 });
 
-// Get DMmod by message ID (for replies)
 router.get('/GetDMmodByMessage/:messageId', async (req, res) => {
     try {
         const { messageId } = req.params;
@@ -79,7 +77,6 @@ router.get('/GetDMmodByMessage/:messageId', async (req, res) => {
     }
 });
 
-// Get all active DMmods for a user
 router.get('/GetUserDMmods/:discordId', async (req, res) => {
     try {
         const { discordId } = req.params;
@@ -107,7 +104,6 @@ router.get('/GetUserDMmods/:discordId', async (req, res) => {
     }
 });
 
-// Update DMmod status (e.g., mark as replied)
 router.put('/UpdateDMmodStatus/:messageId', async (req, res) => {
     try {
         const { messageId } = req.params;
@@ -144,7 +140,6 @@ router.put('/UpdateDMmodStatus/:messageId', async (req, res) => {
     }
 });
 
-// Close DMmod
 router.put('/CloseDMmod/:messageId', async (req, res) => {
     try {
         const { messageId } = req.params;
@@ -172,7 +167,6 @@ router.put('/CloseDMmod/:messageId', async (req, res) => {
     }
 });
 
-// Get DMmod statistics
 router.get('/GetDMmodStats', async (req, res) => {
     try {
         const connection = await pool.getConnection();

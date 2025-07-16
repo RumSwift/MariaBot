@@ -15,7 +15,7 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
 
     async execute(interaction) {
-        // Define allowed role IDs from environment variables
+
         const allowedRoles = [
             process.env.HABBO_STAFF,
             process.env.SULAKE_STAFF,
@@ -25,7 +25,7 @@ module.exports = {
             process.env.LANGUAGE_MOD_BR
         ].filter(Boolean);
 
-        // Check if user has any of the required roles
+
         const userRoles = interaction.member.roles.cache;
         const hasPermission = allowedRoles.some(roleId => userRoles.has(roleId));
 

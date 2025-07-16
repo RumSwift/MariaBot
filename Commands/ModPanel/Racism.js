@@ -48,7 +48,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
         const messageLink = modalSubmission.fields.getTextInputValue('message_link');
 
         try {
-            // Get existing racism sanctions count
             let racismViolations = 0;
             try {
                 const apiResponse = await fetch(`http://localhost:3000/api/sanctions/GetSanctionsByDiscordID/${targetUser.id}`, {
@@ -67,7 +66,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
                 console.log('Failed to fetch sanction history:', apiError.message);
             }
 
-            // Remove any existing timeout before applying new one
             if (member.isCommunicationDisabled()) {
                 await member.timeout(null);
             }
@@ -79,12 +77,10 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             console.log(`User has ${racismViolations} existing Racism violations`);
 
             if (racismViolations === 0) {
-                // First offense - 7 day mute
                 muteDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
                 punishment = '7 Days Muted';
                 await member.timeout(muteDuration, 'Racism - 7 day mute');
             } else if (racismViolations >= 1) {
-                // Second+ offense - Ban
                 punishment = 'User Banned';
                 isBanned = true;
                 await member.ban({ reason: 'Racism - Ban' });
@@ -92,7 +88,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
 
             console.log(`Applied punishment: ${punishment}`);
 
-            // Send DM to user (same format as Moderate.js)
             const dmEmbed = new EmbedBuilder()
                 .setTitle('Formal Message from __Habbo Hotel: Origins Server__')
                 .setDescription(`Hello ${targetUser},\n\nThis is a **__racism violation__** regarding your recent behaviour in the Discord.\n\n\`\`\`${publicReason}\`\`\`\n${isBanned ? 'You have been banned from the server.' : `You have been muted for ${punishment.toLowerCase()}.`}\n\nRacism and discriminatory behavior have zero tolerance in our community. We encourage you to read our community guides, found here: https://discord.com/channels/1252726515712528444/1276211712760090685\n\nIf you have any questions or require clarification, you can use **/dmmod** in any channel for assistance. Alternatively, feel free to reply to this DM to start a conversation with the moderation team.\n\nThank you for understanding.`)
@@ -107,7 +102,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
                 console.log('Failed to send DM to user:', dmError.message);
             }
 
-            // Log to mod channel
             const logChannel = await interaction.client.channels.fetch(process.env.MOD_REPORT_CHANNEL_ID);
             let logMessage = null;
             if (logChannel) {
@@ -120,7 +114,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
                 logMessage = await logChannel.send({ embeds: [logEmbed] });
             }
 
-            // Add to database
             try {
                 await fetch('http://localhost:3000/api/sanctions/AddSanction', {
                     method: 'POST',

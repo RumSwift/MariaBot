@@ -3,7 +3,6 @@ const fetch = require('node-fetch');
 
 module.exports = async (interaction, selectInteraction, targetUser, member) => {
     try {
-        // Fetch user notes from API
         const response = await fetch(`http://localhost:3000/api/usernotes/GetUserNotes/${targetUser.id}`, {
             headers: {
                 'x-api-key': process.env.API_KEY
@@ -38,7 +37,6 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             return;
         }
 
-        // Create embed with notes
         const notesEmbed = new EmbedBuilder()
             .setTitle(`📋 Viewing Notes of ${targetUser.username}`)
             .setDescription(`**Total Notes:** ${notes.length}\n\n`)
@@ -46,14 +44,13 @@ module.exports = async (interaction, selectInteraction, targetUser, member) => {
             .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
             .setTimestamp();
 
-        // Add each note as a numbered list with Title | hyperlink | relative time format
         notes.forEach((note, index) => {
             const timestamp = Math.floor(new Date(note.Timestamp).getTime() / 1000);
 
-            // Create the field name with number and title (no hyperlink here)
+
             const fieldName = `📜 [**${note.Title}**](${note.EmbedLink}) | <t:${timestamp}:R>`;
 
-            // Field value includes hyperlink and relative time
+
             let fieldValue = `<t:${timestamp}:R>`;
             if (note.EmbedLink) {
                 fieldValue = `📜 [**${note.Title}**](${note.EmbedLink}) | <t:${timestamp}:R>`;
