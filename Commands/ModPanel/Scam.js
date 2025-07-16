@@ -2,102 +2,181 @@ const { EmbedBuilder, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('
 const fetch = require('node-fetch');
 
 module.exports = async (interaction, selectInteraction, targetUser, member) => {
-    // Create confirmation embed
-    const confirmEmbed = new EmbedBuilder()
-        .setTitle('🚨 Scam/Phishing Ban Confirmation')
-        .setDescription(`**Are you sure you want to ban ${targetUser.username} for Scam/Phishing?**\n\n**This action will:**\n• Permanently ban the user from the server\n• Delete all their message history (last 7 days)\n• Cannot be undone without manual unban\n\n**User:** ${targetUser} (${targetUser.username})\n**User ID:** ${targetUser.id}`)
-        .setColor('#FF0000') // Red color for danger
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
-        .setFooter({ text: 'This confirmation will expire in 15 seconds' })
-        .setTimestamp();
+    try {
+        const confirmEmbed = new EmbedBuilder()
+            .setTitle('🚨 Scam/Phishing Ban Confirmation')
+            .setDescription(`**Are you sure you want to ban ${targetUser.username} for Scam/Phishing?**\n\n**This action will:**\n• Permanently ban the user from the server\n• Delete all their message history (last 7 days)\n• Cannot be undone without manual unban\n\n**User:** ${targetUser} (${targetUser.username})\n**User ID:** ${targetUser.id}`)
+            .setColor('#FF0000')
+            .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+            .setFooter({ text: 'This confirmation will expire in 30 seconds' })
+            .setTimestamp();
 
-    // Create confirmation buttons
-    const confirmButton = new ButtonBuilder()
-        .setCustomId(`confirm_scam_ban_${targetUser.id}`)
-        .setLabel('Yes, Ban User')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('🚨');
+        const timestamp = Date.now();
+        const confirmId = `scam_confirm_${targetUser.id}_${timestamp}`;
+        const cancelId = `scam_cancel_${targetUser.id}_${timestamp}`;
 
-    const cancelButton = new ButtonBuilder()
-        .setCustomId(`cancel_scam_ban_${targetUser.id}`)
-        .setLabel('No, Cancel')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji('❌');
+        const confirmButton = new ButtonBuilder()
+            .setCustomId(confirmId)
+            .setLabel('Yes, Ban User')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🚨');
 
-    const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+        const cancelButton = new ButtonBuilder()
+            .setCustomId(cancelId)
+            .setLabel('No, Cancel')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('❌');
 
-    // Send confirmation message
-    const confirmationReply = await selectInteraction.reply({
-        embeds: [confirmEmbed],
-        components: [row],
-        ephemeral: true
-    });
+        const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
 
-    // Create collector for button interactions
-    const collector = confirmationReply.createMessageComponentCollector({
-        time: 15000 // 15 seconds
-    });
-
-    collector.on('collect', async (buttonInteraction) => {
-        if (buttonInteraction.user.id !== interaction.user.id) {
-            return await buttonInteraction.reply({ content: 'This confirmation is not for you.', ephemeral: true });
+        if (!global.scamConfirmations) {
+            global.scamConfirmations = new Map();
         }
 
-        // First, acknowledge the interaction
+        global.scamConfirmations.set(confirmId, {
+            originalInteraction: interaction,
+            targetUser: targetUser,
+            member: member,
+            timestamp: timestamp,
+            authorizedUserId: interaction.user.id
+        });
+
+        global.scamConfirmations.set(cancelId, {
+            originalInteraction: interaction,
+            targetUser: targetUser,
+            member: member,
+            timestamp: timestamp,
+            authorizedUserId: interaction.user.id
+        });
+
+        await selectInteraction.reply({
+            embeds: [confirmEmbed],
+            components: [row],
+            ephemeral: true
+        });
+
+        setTimeout(() => {
+            global.scamConfirmations?.delete(confirmId);
+            global.scamConfirmations?.delete(cancelId);
+        }, 30000);
+
+    } catch (error) {
+        console.error('Error in scam confirmation setup:', error);
+        try {
+            if (!selectInteraction.replied && !selectInteraction.deferred) {
+                await selectInteraction.reply({
+                    content: '❌ **Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.',
+                    ephemeral: true
+                });
+            } else if (selectInteraction.deferred) {
+                await selectInteraction.editReply({
+                    content: '❌ **Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.'
+                });
+            } else {
+                await selectInteraction.followUp({
+                    content: '❌ **Failed to create scam ban confirmation**\n\nThere was an error setting up the confirmation dialog. Please try again.',
+                    ephemeral: true
+                });
+            }
+        } catch (errorReplyError) {
+            console.error('Failed to send error reply:', errorReplyError);
+        }
+    }
+};
+
+module.exports.handleScamConfirmation = async (buttonInteraction) => {
+    if (!buttonInteraction.customId.startsWith('scam_confirm_') && !buttonInteraction.customId.startsWith('scam_cancel_')) {
+        return false;
+    }
+
+    try {
+        if (!global.scamConfirmations) {
+            await buttonInteraction.reply({
+                content: '❌ This confirmation has expired. Please try the command again.',
+                ephemeral: true
+            });
+            return true;
+        }
+
+        const confirmationData = global.scamConfirmations.get(buttonInteraction.customId);
+        if (!confirmationData) {
+            await buttonInteraction.reply({
+                content: '❌ This confirmation has expired. Please try the command again.',
+                ephemeral: true
+            });
+            return true;
+        }
+
+        if (buttonInteraction.user.id !== confirmationData.authorizedUserId) {
+            await buttonInteraction.reply({
+                content: 'This confirmation is not for you.',
+                ephemeral: true
+            });
+            return true;
+        }
+
         await buttonInteraction.deferReply({ ephemeral: true });
 
-        if (buttonInteraction.customId === `confirm_scam_ban_${targetUser.id}`) {
-            // User confirmed the ban - execute immediately
-            await executeScamBan(interaction, buttonInteraction, targetUser, member, confirmationReply);
-        } else if (buttonInteraction.customId === `cancel_scam_ban_${targetUser.id}`) {
-            // User cancelled
+        if (buttonInteraction.customId.startsWith('scam_confirm_')) {
+            await executeScamBan(
+                confirmationData.originalInteraction,
+                buttonInteraction,
+                confirmationData.targetUser,
+                confirmationData.member
+            );
+        } else if (buttonInteraction.customId.startsWith('scam_cancel_')) {
             await buttonInteraction.editReply({
                 content: '❌ **Scam/Phishing ban cancelled.**'
             });
-
-            // Delete the original confirmation message
-            try {
-                await confirmationReply.delete();
-            } catch (error) {
-                console.log('Could not delete confirmation message');
-            }
         }
-    });
 
-    collector.on('end', async (collected) => {
-        if (collected.size === 0) {
-            // Timeout - just delete the confirmation message
-            try {
-                await confirmationReply.delete();
-            } catch (error) {
-                console.log('Could not delete confirmation message on timeout');
+        global.scamConfirmations.delete(buttonInteraction.customId);
+        const otherPrefix = buttonInteraction.customId.startsWith('scam_confirm_') ? 'scam_cancel_' : 'scam_confirm_';
+        const otherKey = buttonInteraction.customId.replace(/^scam_(confirm|cancel)_/, otherPrefix);
+        global.scamConfirmations.delete(otherKey);
+
+        return true;
+
+    } catch (error) {
+        console.error('Error handling scam confirmation button:', error);
+        try {
+            if (!buttonInteraction.deferred && !buttonInteraction.replied) {
+                await buttonInteraction.reply({
+                    content: '❌ An error occurred processing your confirmation: ' + error.message,
+                    ephemeral: true
+                });
+            } else {
+                await buttonInteraction.editReply({
+                    content: '❌ An error occurred processing your confirmation: ' + error.message
+                });
             }
+        } catch (replyError) {
+            console.error('Failed to send error reply:', replyError);
         }
-    });
+        return true;
+    }
 };
 
-async function executeScamBan(interaction, buttonInteraction, targetUser, member, confirmationReply) {
+async function executeScamBan(interaction, buttonInteraction, targetUser, member) {
     try {
-        // Ban the user with message deletion (7 days)
         await member.ban({
             reason: 'Scam/Phishing - Instant Ban',
-            deleteMessageSeconds: 7 * 24 * 60 * 60 // 7 days in seconds
+            deleteMessageSeconds: 7 * 24 * 60 * 60
         });
 
-        // Log to mod report channel
         const logChannel = await interaction.client.channels.fetch(process.env.MOD_REPORT_CHANNEL_ID);
         let logMessage = null;
+
         if (logChannel) {
             const logEmbed = new EmbedBuilder()
                 .setTitle('🚨 Scam/Phishing Ban Applied 🚨')
                 .setDescription(`**__User Banned for Scam/Phishing__**\n**To: **${targetUser} (${member.displayName})\n**Sanction: ** User Banned 🚨\n\n**__Reason:__**\n\`\`\`Scam/Phishing\`\`\`\n**__Reason Provided To User:__**\n\`\`\`Scam/Phishing\`\`\`\n**__Message History:__** Deleted (7 days)\n\n**Mod:** ${interaction.user} (${interaction.user.username})`)
-                .setColor('#FF0000') // Red color
+                .setColor('#FF0000')
                 .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }));
 
             logMessage = await logChannel.send({ embeds: [logEmbed] });
         }
 
-        // Add to database via API
         try {
             await fetch('http://localhost:3000/api/sanctions/AddSanction', {
                 method: 'POST',
@@ -119,34 +198,21 @@ async function executeScamBan(interaction, buttonInteraction, targetUser, member
                 })
             });
         } catch (apiError) {
-            console.log('Failed to log scam/phishing sanction to database:', apiError.message);
+            console.log('Failed to log scam sanction to database:', apiError.message);
         }
 
-        // Send success message as a follow-up
         await buttonInteraction.editReply({
             content: `✅ **Scam/Phishing Ban Applied**\n\n${targetUser.username} has been permanently banned for scam/phishing.\n\n**Actions taken:**\n• User banned from server\n• Message history deleted (7 days)\n• Logged to database\n\n${logMessage ? `**Log:** ${logMessage.url}` : ''}`
         });
 
-        // Delete the original confirmation message
-        try {
-            await confirmationReply.delete();
-        } catch (error) {
-            console.log('Could not delete confirmation message');
-        }
-
     } catch (error) {
-        console.log('Error in scam/phishing ban execution:', error);
-
-        // Send error message as a follow-up
-        await buttonInteraction.editReply({
-            content: '❌ **Ban Failed**\n\nFailed to ban user for scam/phishing. Contact Hbabo Staff.'
-        });
-
-        // Delete the original confirmation message
+        console.error('Error in scam ban execution:', error);
         try {
-            await confirmationReply.delete();
-        } catch (error) {
-            console.log('Could not delete confirmation message');
+            await buttonInteraction.editReply({
+                content: '❌ **Ban Failed**\n\nFailed to ban user for scam/phishing. Contact Hbabo Staff.\n\n**Error details:** ' + error.message
+            });
+        } catch (replyError) {
+            console.error('Failed to send error reply:', replyError);
         }
     }
 }

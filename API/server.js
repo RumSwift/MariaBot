@@ -24,12 +24,14 @@ const modmailRoutes = require('./Routes/ModMail');
 const dmmodRoutes = require('./Routes/DMmod');
 const bannedEmojisRoutes = require('./Routes/BannedEmojis');
 const userNotesRoutes = require('./Routes/UserNotes');
+const autoMessagesRoutes = require('./Routes/AutoMessages');
 
 app.use('/api/sanctions', sanctionsRoutes);
 app.use('/api/modmail', modmailRoutes);
 app.use('/api/dmmod', dmmodRoutes);
 app.use('/api/bannedemojis', bannedEmojisRoutes);
 app.use('/api/usernotes', userNotesRoutes);
+app.use('/api/automessages', autoMessagesRoutes);
 
 app.listen(PORT, () => {
     console.log(`API Server running on port ${PORT}`);
@@ -38,4 +40,5 @@ app.listen(PORT, () => {
     console.log(`DMmod API: http://localhost:${PORT}/api/dmmod`);
     console.log(`Banned Emojis API: http://localhost:${PORT}/api/bannedemojis`);
     console.log(`User Notes API: http://localhost:${PORT}/api/usernotes`);
+    console.log(`Auto Messages API: http://localhost:${PORT}/api/automessages`);
 });

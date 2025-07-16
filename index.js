@@ -16,6 +16,7 @@ const dmmodReplyService = require('./Services/DMmodReply');
 const reactRemovalService = require('./Services/ReactRemoval');
 const feedbackEmbed = require('./Services/FeedbackEmbed');
 const bugReportingEmbed = require('./Services/BugReportingEmbed');
+const autoMessagesService = require('./Services/AutoMessages');
 
 require('dotenv').config();
 const TOKEN = process.env.DISCORD_TOKEN;
@@ -77,6 +78,7 @@ client.once('ready', async () => {
 
     // Initialize ReactRemoval service with database
     await reactRemovalService.initialize();
+    await autoMessagesService.initialize();
 });
 
 client.on('interactionCreate', async interaction => {
@@ -98,6 +100,21 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    // Check if this is a scam confirmation button
+    if (interaction.customId.startsWith('scam_confirm_') || interaction.customId.startsWith('scam_cancel_')) {
+        const scamModule = require('./Commands/ModPanel/Scam');
+        if (scamModule.handleScamConfirmation) {
+            const handled = await scamModule.handleScamConfirmation(interaction);
+            if (handled) {
+                console.log('Scam confirmation button handled successfully');
+            }
+        }
+    }
+});
+
 // Message deletion event handler
 client.on('messageDelete', async (message) => {
     await messageDeletedService.handleMessageDelete(message);
@@ -112,6 +129,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
 client.on('messageCreate', async (message) => {
     await modMailService.handleUserDM(message);
     await modMailService.handleModeratorReply(message);
+    await autoMessagesService.handleMessage(message);
 });
 
 // Member update event handler (for role changes)
